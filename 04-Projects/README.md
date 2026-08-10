@@ -7,6 +7,7 @@
 ## 🧪 规划实战 Labs 列表
 
 ### 📍 [**Lab 01: 手写 Minimal ReAct Agent**](file:///c:/Haven-AI/04-Projects/lab01_minimal_react/README.md) (`lab01_minimal_react`)
+- **[Stage 1: 构建最小 Agent Loop 技能清单全量对齐报告 (6/6 100% 完成)](file:///c:/Haven-AI/04-Projects/lab01_minimal_react/01-Stage1-Checklist-Summary.md)**
 - **目标**：不使用任何第三方框架（仅用 `openai` SDK 或纯 Python），从零手写 ReAct 循环。
 - **包含组件**：
   - 手写 System Prompt

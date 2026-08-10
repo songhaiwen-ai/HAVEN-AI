@@ -11,9 +11,10 @@
 - 🏗️ [**02-Agent-Architecture (Agent 核心架构)**](file:///c:/Haven-AI/02-Agent-Architecture/01-What-is-an-Agent.md)
   - Agent 四大支柱、[Chatbot / Workflow / Agent / Multi-Agent 核心区别对比](file:///c:/Haven-AI/02-Agent-Architecture/02-Chatbot-vs-Workflow-vs-Agent-vs-MultiAgent.md)、[O-T-A-O 核心自主循环](file:///c:/Haven-AI/02-Agent-Architecture/03-Agent-Basic-Loop-Observe-Think-Act.md)、[什么时候不该用 Agent](file:///c:/Haven-AI/02-Agent-Architecture/04-When-NOT-to-use-an-Agent.md)、[Anthropic 官方指南](file:///c:/Haven-AI/02-Agent-Architecture/05-Anthropic-Building-Effective-Agents.md)、[OpenAI 官方白皮书](file:///c:/Haven-AI/02-Agent-Architecture/06-OpenAI-Practical-Guide-to-Building-Agents.md)、[短笔记：为什么需要 Agent 而不是 Workflow](file:///c:/Haven-AI/02-Agent-Architecture/07-Short-Note-Why-Agent-Over-Workflow.md)。
 - 🛠️ [**03-Frameworks-and-Tools (主流框架与工具)**](file:///c:/Haven-AI/03-Frameworks-and-Tools/README.md)
-  - LangChain, LlamaIndex, AutoGen, CrewAI, MCP (Model Context Protocol) 及 Tool/API 集成。
+  - [OpenAI Function Calling 指南](file:///c:/Haven-AI/03-Frameworks-and-Tools/01-OpenAI-Function-Calling-Guide.md)、[Google Gemini Function Calling 权威指南](file:///c:/Haven-AI/03-Frameworks-and-Tools/02-Google-Gemini-Function-Calling-Guide.md)、[Anthropic Claude Tool Use 权威指南](file:///c:/Haven-AI/03-Frameworks-and-Tools/03-Anthropic-Claude-Tool-Use-Guide.md)、LangChain, LlamaIndex, AutoGen, CrewAI, MCP 及 Tool/API 集成。
 - 💻 [**04-Projects (实战项目与代码仓库)**](file:///c:/Haven-AI/04-Projects/README.md)
-  - 从零手写 ReAct Agent、RAG 知识库系统、多 Agent 协作系统等练习 labs。
+  - [🎉 Stage 1: 构建最小 Agent Loop 技能清单全量总结 (6/6 通关)](file:///c:/Haven-AI/04-Projects/lab01_minimal_react/01-Stage1-Checklist-Summary.md)
+  - [Lab 01 从零手写 ReAct Agent](file:///c:/Haven-AI/04-Projects/lab01_minimal_react/README.md)、RAG 知识库系统、多 Agent 协作系统等练习 labs。
 - ❓ [**05-FAQ-and-Troubleshooting (问题总结与踩坑记录)**](file:///c:/Haven-AI/05-FAQ-and-Troubleshooting/README.md)
   - 开发过程中的报错、性能调优、常见问题答疑库。
 - 📚 [**06-Resources (论文与优质资源)**](file:///c:/Haven-AI/06-Resources/README.md)

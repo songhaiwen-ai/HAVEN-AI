@@ -25,9 +25,20 @@
 
 ---
 
-## 3. 本目录未来沉淀内容计划
+## 3. 📚 本目录官方指南与技术归档
 
-- `01-LangGraph-Guide.md`: LangGraph 状态图架构与实战。
+- 📄 [**01-OpenAI-Function-Calling-Guide.md**](file:///c:/Haven-AI/03-Frameworks-and-Tools/01-OpenAI-Function-Calling-Guide.md)
+  - OpenAI 官方 Function Calling 权威指南与 5 步生命周期拆解
+  - Strict Mode (严格模式强约束)、并行函数调用 (Parallel Function Calling)
+  - Java 后端视角概念映射与手写 ReAct 正则对比表
+- 📄 [**02-Google-Gemini-Function-Calling-Guide.md**](file:///c:/Haven-AI/03-Frameworks-and-Tools/02-Google-Gemini-Function-Calling-Guide.md)
+  - Google Gemini 官方 Function Calling 权威指南与 Interactions API
+  - 多模态函数响应 (返回图片 Base64)、远程 MCP 服务器集成、Google Search 混用
+  - 独创update() 专用工具避开前置文本报错解法与 OpenAI 横向对比表
+- 📄 [**03-Anthropic-Claude-Tool-Use-Guide.md**](file:///c:/Haven-AI/03-Frameworks-and-Tools/03-Anthropic-Claude-Tool-Use-Guide.md)
+  - Anthropic Claude 官方 Tool Use 权威指南与 Messages API 交互闭环
+  - 三维工具划分 (Client / Schema-Client / Server Tools)、Advisor Tool 导师模式
+  - SDK Tool Runner 自动轮询、系统提示词 Token 消耗明细与三大巨头横向对比表
 - `02-LlamaIndex-RAG-Agent.md`: 数据检索 Agent 搭建指南。
 - `03-CrewAI-Multi-Agent.md`: 多 Agent 团队配置指南。
 - `04-MCP-Protocol.md`: 编写你的第一个 MCP Server。

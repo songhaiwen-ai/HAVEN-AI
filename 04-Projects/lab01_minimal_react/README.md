@@ -10,7 +10,7 @@
 
 在不使用任何第三方 Agent 框架（如 LangChain, CrewAI, AutoGen）的前提下，用**纯 Python**实现底层的 **Observe → Think → Act → Observe** 控制循环。
 
-做完本 Lab，您将彻底弄懂：
+通过本 Lab 的手写实战，可以彻底掌握：
 1. 大模型是如何通过 System Prompt 约束输出 `Thought`（思考）与 `Action`（决策动作）的。
 2. 如何手写一个工具注册表 (Tool Registry) 与派发器 (Tool Dispatcher)。
 3. 如何通过维护一个全局 `messages` 对话列表（Session 上下文），把工具返回的 `Observation`（观察结果）闭环喂回给大脑。
