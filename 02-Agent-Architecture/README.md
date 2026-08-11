@@ -42,3 +42,7 @@
 7. 📄 [**07-Short-Note-Why-Agent-Over-Workflow.md**](file:///c:/Haven-AI/02-Agent-Architecture/07-Short-Note-Why-Agent-Over-Workflow.md)
    - 一页纸短笔记卡片：我的场景为什么需要 Agent，而不是普通 Workflow？
    - 三大分水岭测试（分支爆炸、错误自愈、目标导向测试）
+
+8. 📄 [**08-GPT-Researcher-Architecture-Study.md**](file:///c:/Haven-AI/02-Agent-Architecture/08-GPT-Researcher-Architecture-Study.md)
+   - 100% 纯 Python 全球顶尖深度研究 Agent 框架 GPT Researcher 全景架构拆解
+   - 多源检索 (Retrievers)、网页抓取 (Scrapers)、上下文向量压缩 (ContextManager) 与引用报告生成 (Writer)

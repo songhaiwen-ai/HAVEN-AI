@@ -23,5 +23,5 @@
    - Python 能力：具备 Python 基本语法能力，属于 AI / Agent 初学者。
 
 2. **教学与代码编写原则 (Teaching Principles)**：
-   - **Java 概念对齐 (Java Analogy)**：在解释 Python 代码和 Agent 架构时，主动对比 Java 后端概念（如用 `dict/Pydantic` 对比 `POJO/Jackson`，用 `Function Tool` 对比 `反射/策略模式`，用 `LangChain` 对比 `Spring AI/LangChain4j`）。
+   - **客观严谨的技术讲解**：直接聚焦于 AI / Agent 架构、原理、算法与代码实现本身，保持纯粹、标准、通用的技术文档风格，无需刻意与 Java 概念做对比。
    - **代码简洁易懂**：Python 代码需保持结构清晰、注释详尽，类型提示 (Type Hints) 标注规范。

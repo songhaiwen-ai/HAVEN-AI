@@ -1,0 +1,32 @@
+# Ignore cloned reference projects
+gpt-researcher/
+references/
+
+# Python ignore
+__pycache__/
+*.pyc
+.venv/
+env/
+venv/
+.pytest_cache/
+*.egg-info/
+.env
+
+# ChromaDB persistence
+chroma_db/
+**/chroma_db/
+
+# Ignore loose prototype scripts in lab02_rag_agent
+04-Projects/lab02_rag_agent/01_minimal_rag.py
+04-Projects/lab02_rag_agent/01_retriever.py
+04-Projects/lab02_rag_agent/02_scraper.py
+04-Projects/lab02_rag_agent/03_context_manager.py
+04-Projects/lab02_rag_agent/04_report_writer.py
+04-Projects/lab02_rag_agent/05_vector_store.py
+04-Projects/lab02_rag_agent/06_doc_loader.py
+04-Projects/lab02_rag_agent/07_fastapi_server.py
+04-Projects/lab02_rag_agent/main_researcher.py
+
+# Node ignore
+node_modules/
+dist/

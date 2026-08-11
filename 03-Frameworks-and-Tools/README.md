@@ -39,6 +39,11 @@
   - Anthropic Claude 官方 Tool Use 权威指南与 Messages API 交互闭环
   - 三维工具划分 (Client / Schema-Client / Server Tools)、Advisor Tool 导师模式
   - SDK Tool Runner 自动轮询、系统提示词 Token 消耗明细与三大巨头横向对比表
-- `02-LlamaIndex-RAG-Agent.md`: 数据检索 Agent 搭建指南。
-- `03-CrewAI-Multi-Agent.md`: 多 Agent 团队配置指南。
-- `04-MCP-Protocol.md`: 编写你的第一个 MCP Server。
+- 📄 [**04-MCP-Model-Context-Protocol-Guide.md**](file:///c:/Haven-AI/03-Frameworks-and-Tools/04-MCP-Model-Context-Protocol-Guide.md)
+  - MCP 协议三层架构 (Host/Server/Tools)、JSON-RPC 传输与 Java 微服务架构映射
+- 📄 [**05-Gemini-Code-Execution-Guide.md**](file:///c:/Haven-AI/03-Frameworks-and-Tools/05-Gemini-Code-Execution-Guide.md)
+  - Google Gemini 代码执行 (Code Execution) 确定性逻辑计算与沙盒隔离机制
+- 📄 [**06-LlamaIndex-RAG-Agent-Guide.md**](file:///c:/Haven-AI/03-Frameworks-and-Tools/06-LlamaIndex-RAG-Agent-Guide.md)
+  - LlamaIndex 数据切片 (Chunking)、向量化 (Embedding)、检索 (Retrieve) 与工具化封装
+- 📄 [**07-LangChain-LangGraph-Guide.md**](file:///c:/Haven-AI/03-Frameworks-and-Tools/07-LangChain-LangGraph-Guide.md)
+  - LangChain / LangGraph 基于图 (Graph) 的状态机 Agent、持久化与条件路由机制

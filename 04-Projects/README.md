@@ -14,8 +14,9 @@
   - 自定义函数工具（计算器、时间查询、代码执行）
   - 观察-思考-行动循环解析器与死循环防御
 
-### 📍 Lab 02: 搭建企业私有文档 RAG 助手 (`lab02_rag_agent`)
-- **目标**：结合 Chroma 向量数据库与 Python，构建可检索 PDF / Markdown 并进行引用的 QA Agent。
+### 📍 [**Lab 02: 搭建企业级 RAG 与资料研究助手**](file:///c:/Haven-AI/04-Projects/lab02_rag_agent/00-Stage2-Roadmap-and-Architecture.md) (`lab02_rag_agent`)
+- **[Stage 2: 企业级 RAG 与资料研究助手渐进式实战路线图](file:///c:/Haven-AI/04-Projects/lab02_rag_agent/00-Stage2-Roadmap-and-Architecture.md)**
+- **目标**：结合向量数据库 (Chroma)、混合检索 (Hybrid)、重排 (Rerank) 与工具调用，构建具备溯源引用能力的 Deep Research Agent。
 
 ### 📍 Lab 03: 基于 LangGraph 的自我修正代码生成器 (`lab03_self_correcting_coder`)
 - **目标**：使用 LangGraph 搭建带“反思 (Reflexion)”能力的 Agent：写代码 → 跑单元测试 → 失败则自动读 Traceback 并修正代码 → 重试直至测试通过。
