@@ -25,9 +25,13 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = None
     openai_base_url: str = "https://api.deepseek.com"  # DeepSeek 官方 API Base URL
 
-    # 3. 向量数据库 Vector Store 配置
-    vector_store_type: str = "chroma"
+    # 3. 向量数据库 Vector Store 配置 (支持 qdrant / chroma_local / chroma_remote)
+    vector_store_type: str = "qdrant"  # 支持 qdrant, chroma_local, chroma_remote
     vector_store_dir: str = "./chroma_db"
+    vector_store_host: str = "127.0.0.1"
+    vector_store_port: int = 8000
+    qdrant_url: Optional[str] = None
+    qdrant_api_key: Optional[str] = None
     default_collection_name: str = "agent_knowledge_base"
 
     # 4. Agent 抓取与切片工程参数
