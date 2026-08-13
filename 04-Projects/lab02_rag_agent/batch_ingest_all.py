@@ -11,6 +11,10 @@ batch_ingest_all.py - 批量解析 PDF 电子书与 Markdown 技术文档并持�
 import os
 import sys
 import time
+
+# 自动将当前项目根目录加入 sys.path，防止 PyCharm 导包标红
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from haven_research.core import logger
 from haven_research.ingestion import LocalKnowledgeIngestionService
 from haven_research.storage import VectorStoreFactory

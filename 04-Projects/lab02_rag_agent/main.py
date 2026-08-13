@@ -5,9 +5,14 @@ main.py - HavenResearch Engine 深度研究 Agent 主运行入口
     python main.py --query "2026 年企业级 AI Agent 架构设计与技术选型"
 """
 
+import os
 import sys
 import asyncio
 import argparse
+
+# 自动将当前项目根目录加入 sys.path，防止 PyCharm 导包标红或找不到模块
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from haven_research import HavenResearcher
 from haven_research.schemas.dto import ResearchRequestDTO
 from haven_research.core import logger
