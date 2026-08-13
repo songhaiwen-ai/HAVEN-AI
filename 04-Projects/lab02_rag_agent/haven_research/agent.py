@@ -5,7 +5,7 @@ haven_research/agent.py - 生产级 HavenResearcher 主控 Agent 调度引擎
 调度整套自动化研究工作流：
 1. 动态 Agent 角色生成 (choose_agent)
 2. 子主题拆解 (Plan)
-3. 异步网络检索与网页抓取去噪 (Search & Scrape)
+3. 数据源选择性检索 (ReportSource: Web / Local / Hybrid)
 4. 语义切片与向量入库 (Ingest & Vector Store)
 5. 双路混合检索与 BGE Reranker 二次精排 (Hybrid Search & Rerank)
 6. DeepSeek 深度生成 Markdown 技术研究报告 (Synthesize Report)
@@ -70,7 +70,7 @@ class HavenResearcher:
         """
         全自动化深度研究工作流调度主入口
         """
-        logger.info(f"=== 🚀 开启 HavenResearch 深度研究 Agent (课题: '{self.query}') ===")
+        logger.info(f"=== 🚀 开启 HavenResearch 深度研究 Agent (课题: '{self.query}', 模式: {self.report_type.value}, 目标数据源: {self.report_source.value}) ===")
 
         # ----------------------------------------------------------------------
         # 步骤 0: 动态定制专精 Agent 角色与人设 Persona (gpt-researcher 1:1)
@@ -85,30 +85,34 @@ class HavenResearcher:
         logger.info(f"[Agent Step 1/5] 子主题拆解完毕: {subtopics}")
 
         # ----------------------------------------------------------------------
-        # 步骤 2: 高并发网络检索、网页抓取去噪与语义切片入库
+        # 步骤 2: 根据 ReportSource (Web / Local / Hybrid) 执行检索与抓取
         # ----------------------------------------------------------------------
         all_sources: List[str] = []
-        for idx, subtopic in enumerate(subtopics, 1):
-            logger.info(f"[Agent Step 2/5] (主题 {idx}/{len(subtopics)}) 正在展开检索: '{subtopic}'")
-            
-            # 并发网络搜索
-            search_results = await self.retriever.search(subtopic, max_results=settings.search_max_results)
-            
-            # 并发抓取各网页正文并提取去噪文本
-            scrape_tasks = [self.scraper.scrape_async(res.href, max_chars=1500) for res in search_results]
-            scraped_docs = await asyncio.gather(*scrape_tasks)
-            
-            # 语义切片与存入 Qdrant 云端向量数据库
-            for res, doc in zip(search_results, scraped_docs):
-                if doc.text and len(doc.text) > 50:
-                    chunks = self.splitter.split_text(doc.text)
-                    texts = chunks
-                    metadatas = [{"source": res.href, "title": res.title} for _ in chunks]
-                    
-                    self.vector_store.add_texts(texts=texts, metadatas=metadatas)
-                    self.cost_tracker.add_embeddings(len(texts))
-                    if res.href not in all_sources:
-                        all_sources.append(res.href)
+        
+        # 如果包含 Web 检索 (Web 或 Hybrid 模式)
+        if self.report_source in [ReportSource.Web, ReportSource.Hybrid]:
+            for idx, subtopic in enumerate(subtopics, 1):
+                logger.info(f"[Agent Step 2/5] (网络检索 {idx}/{len(subtopics)}) 正在展开全网检索: '{subtopic}'")
+                
+                # 并发网络搜索 (Tavily / DDG)
+                search_results = await self.retriever.search(subtopic, max_results=settings.search_max_results)
+                
+                # 并发抓取各网页正文并提取去噪文本
+                scrape_tasks = [self.scraper.scrape_async(res.href, max_chars=1500) for res in search_results]
+                scraped_docs = await asyncio.gather(*scrape_tasks)
+                
+                # 语义切片与存入 Qdrant 云端向量数据库
+                for res, doc in zip(search_results, scraped_docs):
+                    if doc.text and len(doc.text) > 50:
+                        chunks = self.splitter.split_text(doc.text)
+                        metadatas = [{"source": res.href, "title": res.title} for _ in chunks]
+                        
+                        self.vector_store.add_texts(texts=chunks, metadatas=metadatas)
+                        self.cost_tracker.add_embeddings(len(chunks))
+                        if res.href not in all_sources:
+                            all_sources.append(res.href)
+        else:
+            logger.info(f"[Agent Step 2/5] 纯本地知识库模式 (Local Mode)，跳过全网实时抓取。")
 
         # ----------------------------------------------------------------------
         # 步骤 3: 结合子问题，双路混合检索 + BGE Reranker 二次精排 (HAVEN-AI 独家)
