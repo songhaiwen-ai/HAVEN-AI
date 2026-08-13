@@ -34,7 +34,8 @@ class Settings(BaseSettings):
     qdrant_api_key: Optional[str] = None
     default_collection_name: str = "agent_knowledge_base"
 
-    # 4. Agent 抓取与切片工程参数
+    # 4. Agent 抓取与检索工程参数
+    tavily_api_key: Optional[str] = None
     max_subtopics: int = 3
     search_max_results: int = 5
     scraper_timeout: int = 10

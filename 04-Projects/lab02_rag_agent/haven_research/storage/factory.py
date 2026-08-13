@@ -35,11 +35,11 @@ class VectorStoreFactory:
         stype = (store_type or settings.vector_store_type).lower()
         cname = collection_name or settings.default_collection_name
 
-        # 1. 生产环境首选：Qdrant Cloud 云端向量数据库
-        if stype in ["qdrant", "qdrant_cloud"]:
-            qurl = qdrant_url or settings.qdrant_url or ":memory:"
+        # 1. 匹配 Qdrant Cloud 云端数据库或内存模式
+        if stype in ["qdrant", "qdrant_cloud", "memory", ":memory:", "in_memory"]:
+            qurl = qdrant_url or (":memory:" if stype in ["memory", ":memory:", "in_memory"] else settings.qdrant_url)
             qkey = qdrant_api_key or settings.qdrant_api_key
-            logger.info(f"[Factory] 实例化 Qdrant 生产向量存储客户端 (URL: {qurl})")
+            logger.info(f"[Factory] 实例化 Qdrant 存储客户端 (URL: {qurl})")
             return QdrantVectorStore(url=qurl, api_key=qkey, collection_name=cname)
 
         # 2. 单机开发环境：Chroma Local
