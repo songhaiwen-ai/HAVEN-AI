@@ -42,7 +42,19 @@ async def run_agent(query: str):
     print("=" * 80 + "\n")
     print(report_dto.report_markdown)
 
+    # 自动保存为本地 .md 格式文件落盘供在 Typora 或 PyCharm 中随时阅读查看
+    outputs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "outputs")
+    os.makedirs(outputs_dir, exist_ok=True)
+    
+    # 清理文件名中的非法字符
+    safe_title = "".join(c if c.isalnum() or c in " _-" else "_" for c in query)[:50].strip("_")
+    report_file_path = os.path.join(outputs_dir, f"{safe_title}_research_report.md")
+    
+    with open(report_file_path, "w", encoding="utf-8") as f:
+        f.write(report_dto.report_markdown)
+
     print("\n" + "=" * 80)
+    print(f" 💾 【报告已自动落盘保存】: {report_file_path}")
     print(f" 🌐 参考数据源与精选上下文列表 ({len(report_dto.sources)} 个):")
     for s in report_dto.sources:
         print(f"  - [{s.url}] 得分: {s.score}")
@@ -61,7 +73,7 @@ def main():
     parser.add_argument(
         "--query",
         type=str,
-        default="2026 年企业级 AI Agent 架构设计与技术选型",
+        default="2026年，AI大模型对程序员的工作形式产生了很大改变，你认为目前来看，那个方向更适合程序员的未来发展呢 ",
         help="研究课题描述"
     )
     args = parser.parse_args()

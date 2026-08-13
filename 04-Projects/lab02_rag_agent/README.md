@@ -2,7 +2,7 @@
 
 > **核心对标标杆**：开源深度研究 Agent 框架 [assafelovic/gpt-researcher](https://github.com/assafelovic/gpt-researcher) (1:1 业务方向与核心架构完全对齐)  
 > **业务定位**：专为 **AI 最新技术文档问答、架构设计与行业研报深度分析** 打造的生产级 Deep Research Agent。  
-> **生产级架构**：基于 DeepSeek API + Qdrant Cloud 云端 Serverless 向量数据库，构建包含**私有本地 PDF/Word/Markdown 知识库自动向量落盘 + 全网实时检索 (Tavily/DDG) + 三层记忆管理 + CodeInterpreter 沙箱代码解释器 + 动态 Agent 角色生成 (choose_agent) + BM25 与 BGE Reranker 二次精排 + 防幻觉引用门禁 + MCP (Model Context Protocol) 扩展与两阶段工具精排 (MCPToolSelector / MCPRetriever) + Agent Skills 动态技能加载**的工业级 Agent。
+> **生产级架构**：基于 DeepSeek API + Qdrant Cloud 云端 Serverless 向量数据库，构建包含**FastAPI + SSE (Server-Sent Events) 打字机流式 Web 服务 + 私有本地 PDF/Word/Markdown 知识库自动向量落盘 + 全网实时检索 (Tavily/DDG) + 三层记忆管理 + CodeInterpreter 沙箱代码解释器 + 动态 Agent 角色生成 (choose_agent) + BM25 与 BGE Reranker 二次精排 + 防幻觉引用门禁 + MCP (Model Context Protocol) 扩展与两阶段工具精排 (MCPToolSelector / MCPRetriever) + Agent Skills 动态技能加载**的工业级 Agent。
 
 ---
 
@@ -17,8 +17,9 @@
 | **5. 多格式文档解析与向量落盘** | `LocalKnowledgeIngestionService` + Qdrant Cloud | ✅ **100% 完全一致** |
 | **6. 报告模式分类 (`ReportType` & `ReportSource`)** | `ResearchReport`, `DetailedReport`, `ResourceReport`, `OutlineReport` | ✅ **100% 完全一致** |
 | **7. Token 消耗与费用结算 (`CostTracker`)** | `haven_research/utils/costs.py` | ✅ **100% 完全一致** |
-| **8. MCP 扩展与两阶段工具精排** | `haven_research/mcp/` (`MCPToolSelector` / `MCPRetriever`) | ✅ **100% 完全一致** |
-| **9. 企业级四大独家增强** | 三层记忆体系 + CodeInterpreter + BGE Reranker + 防幻觉门禁 | 🚀 **HAVEN-AI 独家重磅增强** |
+| **8. MCP 扩展与两阶段工具精排** | `haven_research/mcp/` (`MCPToolSelector` / `MCPRetriever` / `ArXivMCP` / `GitHubMCP`) | ✅ **100% 完全一致** |
+| **9. FastAPI + SSE 打字机流式 API 服务** | `haven_research/api/server.py` (`run_server.py`) | 🚀 **生产级 Web 界面与 REST 调起** |
+| **10. 企业级四大独家增强** | 三层记忆体系 + CodeInterpreter + BGE Reranker + 防幻觉门禁 | 🚀 **HAVEN-AI 独家重磅增强** |
 
 ---
 
@@ -32,10 +33,9 @@ lab02_rag_agent/
 │   ├── schemas/                     # DTO 强类型数据契约 (ResearchRequestDTO, ReportType, ReportSource)
 │   ├── ingestion/                   # 本地多格式文档提取与 Qdrant 向量落盘服务 (LocalKnowledgeIngestionService)
 │   ├── storage/                     # QdrantVectorStore 云端 Serverless 向量存储工厂
+│   ├── api/                         # 【重点】FastAPI + SSE (Server-Sent Events) 打字机 Web API 服务
+│   │   └── server.py                # 支持 REST 提交、SSE 打字机步骤推流、Vue3 控制台与文件落盘
 │   ├── retrievers/                  # 异步网络与 MCP 检索器 (DuckDuckGo, Tavily, MCPRetriever)
-│   │   ├── duckduckgo.py            # DuckDuckGo 免费网络检索
-│   │   ├── tavily.py                # Tavily AI 专有搜索引擎集成 (tavily-python)
-│   │   └── mcp.py                   # MCP 协议两阶段智能检索器 (MCPRetriever)
 │   ├── scrapers/                    # 高并发网页抓取 WebScraper (带 Jina Reader 免爬降级)
 │   ├── planner/                     # 智能子主题拆解器 SubtopicPlanner
 │   ├── actions/                     # 动态 Agent 角色定制生成器 (choose_agent)
@@ -45,9 +45,10 @@ lab02_rag_agent/
 │   ├── verifier/                    # 防幻觉引用后置校验门禁 CitationVerifierGate
 │   ├── utils/                       # Token 消耗与 API 费用折算 CostTracker
 │   ├── skills/                      # Agent Skills 技能发现与执行管理器 (SkillManager)
-│   ├── mcp/                         # MCP (Model Context Protocol) 扩展架构 (HavenMCPClient / MCPToolSelector)
+│   ├── mcp/                         # MCP (Model Context Protocol) 扩展架构 (ArXiv / GitHub / ToolSelector)
 │   └── agent.py                     # HavenResearcher Agent 主控调度引擎
-├── tests/                           # 全量自动化测试套件 (PyTest 27/27 全亮 Green 跑通)
+├── tests/                           # 全量自动化测试套件 (PyTest 31/31 全亮 Green 跑通)
+├── run_server.py                    # Web 服务一键启动入口脚本 (http://127.0.0.1:8000)
 ├── main.py                          # CLI 命令行应用运行入口
 └── setup.py                         # 可编辑包注册脚本
 ```
@@ -56,13 +57,16 @@ lab02_rag_agent/
 
 ## ⚡ 三、 快速开始与测试
 
-### 1. 运行 PyTest 自动化全量单测
+### 1. 启动 Web 控制台与 SSE 打字机流式 API 服务
+在 PyCharm 中右键运行 `run_server.py`，或在命令行输入：
+```bash
+python run_server.py
+```
+* 🌐 **Web UI 交互界面**：`http://127.0.0.1:8000`
+* 📄 **Swagger API 文档**：`http://127.0.0.1:8000/docs`
+
+### 2. 运行 PyTest 自动化全量单测
 ```bash
 python -m pytest tests/
 ```
-*(通过率: **27/27 100% PASSED**)*
-
-### 2. 运行端到端 AI 最新技术深度问答与研究
-```bash
-python main.py --query "2026年企业级 AI Agent 架构设计与技术选型"
-```
+*(通过率: **31/31 100% PASSED**)*
