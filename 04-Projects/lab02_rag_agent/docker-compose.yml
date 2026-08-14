@@ -2,12 +2,13 @@ version: '3.8'
 
 services:
   # ============================================================================
-  # 1. MySQL 8.0 生产级数据库服务
+  # 1. MySQL 8.0 数据库服务 (针对 1GB 内存小服务器优化参数)
   # ============================================================================
   mysql:
     image: mysql:8.0
     container_name: haven_mysql
     restart: always
+    command: --innodb_buffer_pool_size=64M --max_connections=50
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
       MYSQL_DATABASE: haven_agent

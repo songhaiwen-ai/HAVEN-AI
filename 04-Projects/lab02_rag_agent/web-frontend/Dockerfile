@@ -1,18 +1,8 @@
-# 第一阶段：编译构建 Node 24 镜像
-FROM node:24-alpine AS build-stage
-WORKDIR /app
+# 专门为低配 (1GB 内存) 服务器优化的轻量级 Nginx 镜像
+FROM nginx:alpine
 
-COPY package*.json ./
-RUN npm install
-
-COPY . .
-RUN npm run build
-
-# 第二阶段：生产部署 Nginx 镜像
-FROM nginx:alpine AS production-stage
-
-# 复制编译后的 dist 目录到 Nginx 托管目录
-COPY --from=build-stage /app/dist /usr/share/nginx/html
+# 直接复制预先编译好的静态资源文件，免去服务器端耗尽内存的 npm build
+COPY dist /usr/share/nginx/html
 
 # 复制 Nginx 配置文件
 COPY nginx.conf /etc/nginx/conf.d/default.conf
