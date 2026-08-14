@@ -262,50 +262,29 @@ async def chat_stream_sse(
 
     async def event_generator():
         researcher = HavenResearcher(req_dto)
-        
-        # 推送 Step Events 步骤事件
-        yield {"data": json.dumps({"type": "step", "message": "🎭 正在调用 DeepSeek 定制专家 Persona..."}, ensure_ascii=False)}
-        await asyncio.sleep(0.3)
+        full_report_parts = []
+        sources_data = []
 
-        # 调起 Agent 主调度引擎
-        report = await researcher.conduct_research()
+        # 消费 Agent 的真·Token 实时流式生成器
+        async for event in researcher.conduct_research_stream():
+            if event["type"] == "chunk":
+                full_report_parts.append(event["content"])
+            elif event["type"] == "complete":
+                sources_data = event.get("sources", [])
+            
+            yield {"data": json.dumps(event, ensure_ascii=False)}
 
-        persona = report.agent_persona
-        yield {"data": json.dumps({"type": "persona", "persona": persona}, ensure_ascii=False)}
-        yield {"data": json.dumps({"type": "step", "message": f"🗺️ 专家【{persona}】已完成子主题拆解与数据检索..."}, ensure_ascii=False)}
-        yield {"data": json.dumps({"type": "step", "message": "🔍 Qdrant 双路召回与 BGE Reranker 二次精排完成..."}, ensure_ascii=False)}
-        await asyncio.sleep(0.2)
-
-        yield {"data": json.dumps({"type": "step", "message": "📄 正在流式合成 3000 字 Markdown 技术报告..."}, ensure_ascii=False)}
-
-        # 将生成的深度 Markdown 报告逐字/逐块打字推流给前端
-        markdown = report.report_markdown
-        chunk_size = 40
-        for i in range(0, len(markdown), chunk_size):
-            chunk = markdown[i:i+chunk_size]
-            yield {"data": json.dumps({"type": "chunk", "content": chunk}, ensure_ascii=False)}
-            await asyncio.sleep(0.015)
-
-        # 2. 将 Agent 回答持久化落盘到 MySQL/SQLite
-        sources_data = [{"url": s.url, "score": s.score} for s in report.sources]
+        # 2. 将 Agent 回答与全量 Markdown 持久化落盘到 MySQL/SQLite
+        full_markdown = "".join(full_report_parts)
         assistant_msg = ChatMessage(
             session_id=session_id,
             user_id=user_id,
             role="assistant",
-            content=markdown,
+            content=full_markdown,
             sources_json=json.dumps(sources_data, ensure_ascii=False)
         )
         db_inner = next(db_manager.get_db())
         db_inner.add(assistant_msg)
         db_inner.commit()
-
-        yield {
-            "data": json.dumps({
-                "type": "complete",
-                "message": "🎉 深度研究全量履约完成并已落盘保存！",
-                "cost_summary": report.cost_summary,
-                "sources": sources_data
-            }, ensure_ascii=False)
-        }
 
     return EventSourceResponse(event_generator())

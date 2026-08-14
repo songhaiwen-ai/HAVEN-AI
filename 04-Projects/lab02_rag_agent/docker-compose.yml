@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # 1. MySQL 8.0 生产级数据库服务
+  # ============================================================================
+  mysql:
+    image: mysql:8.0
+    container_name: haven_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      MYSQL_DATABASE: haven_agent
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./docker-data/mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ============================================================================
+  # 2. FastAPI 后端 API 服务 (haven_research)
+  # ============================================================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: haven_backend
+    restart: always
+    environment:
+      - MYSQL_URL=mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-123456}@mysql:3306/haven_agent
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-4c6f7b72ce4d4b89a7686ce76aa54a59}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.deepseek.com/v1}
+      - LLM_MODEL=${LLM_MODEL:-deepseek-chat}
+      - TAVILY_API_KEY=${TAVILY_API_KEY:-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}
+      - QDRANT_URL=${QDRANT_URL:-https://9af468fd-a747-49d4-aeb5-ed1e16d0e267.australia-southeast1-0.gcp.cloud.qdrant.io}
+      - QDRANT_API_KEY=${QDRANT_API_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIiwic3ViamVjdCI6ImFwaS1rZXk6MDQ4MGE5NzYtMjdhOS00NTkxLTgzYmUtNjBjMGYzZmYyYjE5In0.9lgHu7lx5_dQylEeWbTpuRuLQBPQNrgXVXkQZ92LyAw}
+    ports:
+      - "8000:8000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # ============================================================================
+  # 3. Vue 3 + Nginx 前端 Web 控制台
+  # ============================================================================
+  frontend:
+    build:
+      context: ./web-frontend
+      dockerfile: Dockerfile
+    container_name: haven_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend

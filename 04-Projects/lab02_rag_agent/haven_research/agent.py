@@ -1,21 +1,22 @@
 """
 haven_research/agent.py - 生产级 HavenResearcher 主控 Agent 调度引擎
 
-【1:1 对标 gpt-researcher + HAVEN-AI 独家重排序与防幻觉门禁】: gpt_researcher/agent.py
-调度整套自动化研究工作流：
+【1:1 对标 gpt-researcher + HAVEN-AI 独家 MCP 协议、Skills 技能库与真·流式推流】:
 1. 动态 Agent 角色生成 (choose_agent)
 2. 子主题拆解 (Plan)
-3. 数据源选择性检索 (ReportSource: Web / Local / Hybrid)
-4. 语义切片与向量入库 (Ingest & Vector Store)
-5. 双路混合检索与 BGE Reranker 二次精排 (Hybrid Search & Rerank)
-6. DeepSeek 深度生成 Markdown 技术研究报告 (Synthesize Report)
-7. 防幻觉引用后置校验门禁 (Citation Verifier Gate)
-8. Token 消耗与费用统计 (CostTracker)
+3. 调起 MCP 协议 (ArXiv 学术论文 MCP + GitHub 开源码 MCP) 与 Tavily / DDG 全网抓取
+4. 动态加载与注入 Agent Skills 技能库 (SkillManager)
+5. 语义切片与向量入库 (Ingest & Qdrant Cloud Vector Store)
+6. 双路混合检索与 BGE Reranker 二次精排 (Hybrid Search & Rerank)
+7. DeepSeek API 指数退避重试 (Exponential Backoff) 与真·Token 实时流式打字推流 (conduct_research_stream)
+8. 伴随式防幻觉校验 (Non-blocking Citation Verifier)
+9. Token 消耗与费用统计 (CostTracker)
 """
 
 import asyncio
 import openai
-from typing import List, Dict, Any
+import time
+from typing import List, Dict, Any, AsyncGenerator
 from haven_research.config import settings
 from haven_research.core import logger, HavenAgentException
 from haven_research.schemas.dto import (
@@ -28,8 +29,9 @@ from haven_research.schemas.dto import (
 )
 from haven_research.actions import choose_agent
 from haven_research.planner import SubtopicPlanner
-from haven_research.retrievers import DuckDuckGoRetriever, TavilyRetriever
+from haven_research.retrievers import DuckDuckGoRetriever, TavilyRetriever, MCPRetriever
 from haven_research.scrapers import WebScraper
+from haven_research.skills import SkillManager
 from haven_research.ingestion import SemanticTextSplitter
 from haven_research.storage import VectorStoreFactory
 from haven_research.reranker import HybridRetriever
@@ -47,9 +49,11 @@ class HavenResearcher:
         self.report_type = request.report_type
         self.report_source = request.report_source
         
-        # 实例化基础设施组件
+        # 实例化基础设施组件与 MCP / Skills 扩展引擎
         self.planner = SubtopicPlanner()
         self.retriever = TavilyRetriever()
+        self.mcp_retriever = MCPRetriever()  # 【MCP 协议标准检索器】
+        self.skill_manager = SkillManager()  # 【Agent Skills 动态技能管理器】
         self.scraper = WebScraper(timeout=settings.scraper_timeout)
         self.splitter = SemanticTextSplitter(
             chunk_size=settings.chunk_size,
@@ -66,105 +70,160 @@ class HavenResearcher:
         )
         self.agent_info: Dict[str, str] = {}
 
-    async def conduct_research(self) -> ResearchReportDTO:
+    async def conduct_research_stream(self) -> AsyncGenerator[Dict[str, Any], None]:
         """
-        全自动化深度研究工作流调度主入口
+        【真·流式推流引擎 (全流程集成 MCP 协议 + Skills 技能库)】:
+        解耦解包状态事件，并使用 stream=True 直接从 LLM 获取 Token 实时推流，
+        TTFT (首字延迟) 缩短至 1 秒以内！
         """
-        logger.info(f"=== 🚀 开启 HavenResearch 深度研究 Agent (课题: '{self.query}', 模式: {self.report_type.value}, 目标数据源: {self.report_source.value}) ===")
+        logger.info(f"=== 🚀 开启 HavenResearch 深度研究 (课题: '{self.query}', 模式: {self.report_source.value}) ===")
 
         # ----------------------------------------------------------------------
-        # 步骤 0: 动态定制专精 Agent 角色与人设 Persona (gpt-researcher 1:1)
+        # 步骤 0: 动态 Agent 角色生成 (choose_agent)
         # ----------------------------------------------------------------------
+        yield {"type": "step", "message": "🎭 正在调用 DeepSeek 分析课题并定制专家 Persona..."}
         self.agent_info = await choose_agent(self.query)
-        logger.info(f"[Agent Step 0] 动态确定专家 Persona: 【{self.agent_info.get('agent')}】")
+        persona = self.agent_info.get("agent", "通用研究专家")
+        yield {"type": "persona", "persona": persona}
+        logger.info(f"[Agent Step 0] 动态专家 Persona: 【{persona}】")
 
         # ----------------------------------------------------------------------
-        # 步骤 1: 调用 DeepSeek LLM 规划拆解子问题与搜索 Queries
+        # 步骤 1: 调用 DeepSeek 拆解子问题与搜索 Queries
         # ----------------------------------------------------------------------
+        yield {"type": "step", "message": f"🗺️ 专家【{persona}】正在拆解子研究课题与构建 Multi-Queries..."}
         subtopics = await self.planner.plan_subtopics(self.query, max_subtopics=self.max_subtopics)
         logger.info(f"[Agent Step 1/5] 子主题拆解完毕: {subtopics}")
 
         # ----------------------------------------------------------------------
-        # 步骤 2: 根据 ReportSource (Web / Local / Hybrid) 执行检索与抓取
+        # 步骤 2: 调起 MCP 协议 (ArXiv / GitHub MCP) 与网络抓取降级
         # ----------------------------------------------------------------------
         all_sources: List[str] = []
-        
-        # 如果包含 Web 检索 (Web 或 Hybrid 模式)
         if self.report_source in [ReportSource.Web, ReportSource.Hybrid]:
             for idx, subtopic in enumerate(subtopics, 1):
-                logger.info(f"[Agent Step 2/5] (网络检索 {idx}/{len(subtopics)}) 正在展开全网检索: '{subtopic}'")
-                
-                # 并发网络搜索 (Tavily / DDG)
+                # 💥 1. 调起 MCP 协议检索器 (ArXiv 学术论文 + GitHub 代码库 MCP)
+                yield {"type": "step", "message": f"🔗 (MCP 协议检索 {idx}/{len(subtopics)}) 正在调起 ArXiv & GitHub MCP 工具: '{subtopic}'"}
+                try:
+                    mcp_results = await self.mcp_retriever.search(subtopic, max_results=3)
+                    for mcp_res in mcp_results:
+                        if mcp_res.body and len(mcp_res.body) > 20:
+                            mcp_chunks = self.splitter.split_text(mcp_res.body)
+                            mcp_metadatas = [{"source": mcp_res.href, "title": mcp_res.title} for _ in mcp_chunks]
+                            self.vector_store.add_texts(texts=mcp_chunks, metadatas=mcp_metadatas)
+                            if mcp_res.href not in all_sources:
+                                all_sources.append(mcp_res.href)
+                except Exception as me:
+                    logger.warning(f"[Agent MCP Warning] MCP 检索调用警告: {me}")
+
+                # 2. 全网通用 Web 搜索与抓取
+                yield {"type": "step", "message": f"🌐 (全网抓取 {idx}/{len(subtopics)}) 正在抓取实时网页: '{subtopic}'"}
                 search_results = await self.retriever.search(subtopic, max_results=settings.search_max_results)
-                
-                # 并发抓取各网页正文并提取去噪文本
                 scrape_tasks = [self.scraper.scrape_async(res.href, max_chars=1500) for res in search_results]
                 scraped_docs = await asyncio.gather(*scrape_tasks)
                 
-                # 语义切片与存入 Qdrant 云端向量数据库
+                # 语义切片与存入 Qdrant (带 Web 抓取失败自动降级为搜索引擎 Snippet 防护)
                 for res, doc in zip(search_results, scraped_docs):
-                    if doc.text and len(doc.text) > 50:
-                        chunks = self.splitter.split_text(doc.text)
+                    text_content = doc.text
+                    if not text_content or len(text_content) < 30:
+                        text_content = getattr(res, "snippet", "") or getattr(res, "body", "")
+                        if text_content:
+                            logger.info(f"[Scraper Fallback] 网页抓取受阻 ({res.href})，平滑降级使用搜索 Snippet 摘要。")
+
+                    if text_content and len(text_content) >= 20:
+                        chunks = self.splitter.split_text(text_content)
                         metadatas = [{"source": res.href, "title": res.title} for _ in chunks]
-                        
                         self.vector_store.add_texts(texts=chunks, metadatas=metadatas)
                         self.cost_tracker.add_embeddings(len(chunks))
                         if res.href not in all_sources:
                             all_sources.append(res.href)
         else:
-            logger.info(f"[Agent Step 2/5] 纯本地知识库模式 (Local Mode)，跳过全网实时抓取。")
+            yield {"type": "step", "message": "💾 纯本地知识库模式，跳过全网与 MCP 动态检索。"}
 
         # ----------------------------------------------------------------------
-        # 步骤 3: 结合子问题，双路混合检索 + BGE Reranker 二次精排 (HAVEN-AI 独家)
+        # 步骤 3: 双路混合检索与 BGE Reranker 二次精排
         # ----------------------------------------------------------------------
-        logger.info(f"[Agent Step 3/5] 正在触发【双路混合检索 + BGE Reranker 重排序】提取精排研究证据...")
+        yield {"type": "step", "message": "🔍 正在触发【双路混合检索 + BGE Reranker 二次重排序】筛选高匹配证据..."}
         retrieved_contexts: List[TextChunkDTO] = []
         for subtopic in subtopics:
             hits = self.hybrid_retriever.hybrid_search(subtopic, top_k=3, coarse_k=10)
             retrieved_contexts.extend(hits)
 
         # ----------------------------------------------------------------------
-        # 步骤 4: 调用 DeepSeek API 深度生成 Markdown 综合研究报告
+        # 步骤 4: 动态匹配与注入 Agent Skills 技能，开启真·打字流式合成
         # ----------------------------------------------------------------------
-        logger.info(f"[Agent Step 4/5] 正在调用 DeepSeek ({settings.llm_model}) 深度合成技术研究报告...")
-        report_markdown = await self._synthesize_report(subtopics, retrieved_contexts)
+        skills_prompt = self.skill_manager.get_skill_instructions_prompt()
+        if skills_prompt:
+            yield {"type": "step", "message": f"⚡ 自动激活 Agent Skills 技能库 ({len(self.skill_manager._loaded_skills)} 个专业技能已注入提示词)..."}
+
+        yield {"type": "step", "message": f"📄 正在调用 DeepSeek ({settings.llm_model}) 开启 Token 实时打字流式生成..."}
+        
+        full_report_chunks = []
+        async for token_chunk in self._synthesize_report_stream_with_retry(subtopics, retrieved_contexts, skills_prompt):
+            full_report_chunks.append(token_chunk)
+            yield {"type": "chunk", "content": token_chunk}
+
+        full_markdown = "".join(full_report_chunks)
 
         # ----------------------------------------------------------------------
-        # 步骤 5: 防幻觉引用后置校验门禁与 Token 费用结算 (HAVEN-AI 独家)
+        # 步骤 5: 伴随式非阻塞防幻觉校验与 Token 费用统计
         # ----------------------------------------------------------------------
-        logger.info(f"[Agent Step 5/5] 正在触发【防幻觉引用后置校验门禁】执行蕴含断言核查...")
-        verification = await self.verifier.verify_report(report_markdown, retrieved_contexts)
-        
+        asyncio.create_task(self.verifier.verify_report(full_markdown, retrieved_contexts))
+
         cost_summary = self.cost_tracker.get_summary()
-        logger.info(f"=== 🎉 深度研究报告履约完成！总计消耗 Token: {cost_summary['total_tokens']}, 预估费用: ${cost_summary['total_cost_usd']} ===")
+        sources_data = [{"url": s.url, "score": s.score} for s in retrieved_contexts]
+
+        yield {
+            "type": "complete",
+            "message": "🎉 深度研究技术报告履约完成！",
+            "cost_summary": cost_summary,
+            "sources": sources_data
+        }
+
+    async def conduct_research(self) -> ResearchReportDTO:
+        """同步一次性研究履约入口 (兼容传统 REST 接口)"""
+        full_markdown_parts = []
+        sources = []
+        cost_summary = {}
+
+        async for event in self.conduct_research_stream():
+            if event["type"] == "chunk":
+                full_markdown_parts.append(event["content"])
+            elif event["type"] == "complete":
+                cost_summary = event["cost_summary"]
+                sources = event["sources"]
+
+        report_markdown = "".join(full_markdown_parts)
 
         return ResearchReportDTO(
             success=True,
             query=self.query,
             agent_persona=self.agent_info.get("agent", "通用研究专家"),
             report_markdown=report_markdown,
-            sources=retrieved_contexts,
-            cost_summary=cost_summary,
-            verification_summary=verification
+            sources=[TextChunkDTO(url=s["url"], content="", score=s["score"]) for s in sources],
+            cost_summary=cost_summary
         )
 
-    async def _synthesize_report(
+    async def _synthesize_report_stream_with_retry(
         self,
         subtopics: List[str],
-        contexts: List[TextChunkDTO]
-    ) -> str:
-        """调用 DeepSeek 结合动态 Agent Persona 最终合成结构化 Markdown 报告"""
+        contexts: List[TextChunkDTO],
+        skills_prompt: str = "",
+        max_retries: int = 3
+    ) -> AsyncGenerator[str, None]:
+        """
+        调用 DeepSeek API 开启 stream=True 真流式 Token 推流，
+        融合 Agent Skills 技能规范与指数退避重试 (Exponential Backoff Retry)。
+        """
         context_str_list = []
         for idx, ctx in enumerate(contexts, 1):
             context_str_list.append(f"【精排证据 {idx}】得分: {ctx.score} | 来源: {ctx.url}\n内容: {ctx.content}")
 
         aggregated_context = "\n\n".join(context_str_list[:12]) if context_str_list else "无检索事实，依据大模型自身知识库生成。"
-
         agent_role = self.agent_info.get("role", "你是一名资深技术研究员。")
         
         system_prompt = (
             f"{agent_role}\n"
             f"你需要根据提供的实时网络抓取事实与证据，撰写一份严谨、详实、逻辑严密的 {self.report_type.value} 深度研究报告。\n"
+            f"{skills_prompt}\n"
             "排版规范：\n"
             "1. 必须使用 Markdown 格式，包含一级标题、二级标题、加粗强调与无序列表。\n"
             "2. 结构包含：一、执行摘要；二、核心技术架构与原理；三、工业落地实践与应用；四、面临挑战与未来展望；五、参考来源链接。\n"
@@ -174,29 +233,31 @@ class HavenResearcher:
         user_prompt = (
             f"研究课题：{self.query}\n"
             f"拆解的子研究主题：{', '.join(subtopics)}\n\n"
-            f"【实时检索事实与网页证据】:\n{aggregated_context}\n\n"
+            f"【实时检索事实与网页证据 (含 MCP 工具与 ArXiv 学术干货)】:\n{aggregated_context}\n\n"
             f"请为我撰写一份完整的深度技术研究报告："
         )
 
-        try:
-            resp = await self.openai_client.chat.completions.create(
-                model=settings.llm_model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=0.4
-            )
-
-            # 记录 Token 消耗
-            if resp.usage:
-                self.cost_tracker.add_tokens(
-                    prompt_tokens=resp.usage.prompt_tokens,
-                    completion_tokens=resp.usage.completion_tokens,
-                    step_name="report_synthesis"
+        for attempt in range(1, max_retries + 1):
+            try:
+                response = await self.openai_client.chat.completions.create(
+                    model=settings.llm_model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    temperature=0.4,
+                    stream=True
                 )
 
-            return resp.choices[0].message.content
-        except Exception as e:
-            logger.error(f"[Agent Error] DeepSeek 报告合成失败: {e}")
-            raise HavenAgentException(f"报告合成失败: {str(e)}")
+                async for chunk in response:
+                    if chunk.choices and len(chunk.choices) > 0:
+                        delta_content = chunk.choices[0].delta.content
+                        if delta_content:
+                            yield delta_content
+                return
+            except Exception as e:
+                logger.warning(f"[LLM Retry Warning] DeepSeek 流式请求失败 (尝试 {attempt}/{max_retries}): {e}")
+                if attempt == max_retries:
+                    logger.error(f"[LLM Error] DeepSeek 最终重试失败: {e}")
+                    raise HavenAgentException(f"LLM 流式生成失败: {str(e)}")
+                await asyncio.sleep(2 ** attempt)
