@@ -16,10 +16,11 @@ services:
     volumes:
       - ./docker-data/mysql:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD:-123456} || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 30s
 
   # ============================================================================
   # 2. FastAPI 后端 API 服务 (haven_research)
@@ -41,8 +42,7 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      mysql:
-        condition: service_healthy
+      - mysql
 
   # ============================================================================
   # 3. Vue 3 + Nginx 前端 Web 控制台
