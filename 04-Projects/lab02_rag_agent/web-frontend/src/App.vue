@@ -129,8 +129,7 @@
         <!-- 顶部功能栏 -->
         <header class="h-14 border-b border-slate-200/70 bg-white/80 backdrop-blur-md px-6 flex items-center justify-between z-10">
           <div class="flex items-center space-x-3">
-            <span class="font-bold text-slate-800 text-sm tracking-tight">Haven Research Agent Pro</span>
-            <el-tag size="small" type="primary" effect="light" class="!rounded-full !font-medium">v2.0 Stateful Multi-Turn</el-tag>
+            <span class="font-bold text-slate-800 text-sm tracking-tight">HavenResearch</span>
           </div>
 
           <div class="flex items-center space-x-3">
