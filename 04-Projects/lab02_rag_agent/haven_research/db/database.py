@@ -14,8 +14,12 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, ForeignKey, Index
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+from dotenv import load_dotenv
 from haven_research.config import settings
 from haven_research.core import logger
+
+# 优先载入 .env 文件中的环境变量
+load_dotenv()
 
 Base = declarative_base()
 
