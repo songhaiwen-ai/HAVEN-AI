@@ -255,15 +255,23 @@ async def chat_stream_sse(
     source_enum = ReportSource(report_source) if report_source in [e.value for e in ReportSource] else ReportSource.Hybrid
     req_dto = ResearchRequestDTO(query=query, report_source=source_enum, max_subtopics=3)
 
-    # 1. 记录用户提问到 MySQL/SQLite
+    # 1. 确保关联的 ChatSession 会话记录存在 (若为新会话则自动创建)
     db = next(db_manager.get_db())
+    session_obj = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
+    if not session_obj:
+        session_obj = ChatSession(
+            session_id=session_id,
+            user_id=user_id,
+            title=query[:30] if query else "新建深度研究会话"
+        )
+        db.add(session_obj)
+        db.flush()
+    elif session_obj.title in ["新深度研究对话", "新建深度研究会话"]:
+        session_obj.title = query[:30]
+
+    # 2. 记录用户提问消息到 MySQL/SQLite
     user_msg = ChatMessage(session_id=session_id, user_id=user_id, role="user", content=query)
     db.add(user_msg)
-    
-    # 自动更新会话标题为首次提问内容
-    session_obj = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
-    if session_obj and session_obj.title == "新深度研究对话":
-        session_obj.title = query[:30]
     db.commit()
 
     async def event_generator():
