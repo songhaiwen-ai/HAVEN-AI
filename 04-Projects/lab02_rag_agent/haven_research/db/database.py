@@ -35,12 +35,15 @@ class User(Base):
 
 
 class ChatSession(Base):
-    """会话表 (与用户 1:N 绑定)"""
+    """会话表 (与用户 1:N 绑定，支持背景上下文持久化与 Artifacts 文档画布)"""
     __tablename__ = "chat_sessions"
 
     session_id = Column(String(64), primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     title = Column(String(200), nullable=False, default="新建深度研究会话")
+    background_context = Column(Text, nullable=True)  # 用户隐式补充的项目背景与约束
+    current_document = Column(Text(length=16777215), nullable=True)  # 当前最新版本的 Markdown 文档
+    document_version = Column(String(20), nullable=True, default="v1.0")  # 文档版本号
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -29,5 +29,6 @@ export const chatApi = {
   getSessions: () => api.get('/api/v1/chat/sessions'),
   createSession: (title) => api.post('/api/v1/chat/sessions', { title }),
   deleteSession: (sessionId) => api.delete(`/api/v1/chat/sessions/${sessionId}`),
-  getMessages: (sessionId) => api.get(`/api/v1/chat/sessions/${sessionId}/messages`)
+  getMessages: (sessionId) => api.get(`/api/v1/chat/sessions/${sessionId}/messages`),
+  getArtifact: (sessionId) => api.get(`/api/v1/chat/sessions/${sessionId}/artifact`)
 }

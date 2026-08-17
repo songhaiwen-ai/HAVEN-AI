@@ -2,7 +2,7 @@
   <el-container class="h-screen w-screen bg-[#f8fafc] text-slate-800 font-sans overflow-hidden selection:bg-blue-100">
     
     <!-- =================================================================== -->
-    <!-- 1. 左侧 Element Plus 侧边栏 (260px 宽，极简高级控制台) -->
+    <!-- 1. 左侧 Element Plus 侧边栏 (260px 宽) -->
     <!-- =================================================================== -->
     <el-aside :width="isSidebarCollapsed ? '64px' : '260px'" class="bg-[#f1f5f9] border-r border-slate-200/80 flex flex-col justify-between transition-all duration-300 relative z-20">
       
@@ -11,7 +11,7 @@
         <!-- Header Logo & 折叠按钮 -->
         <div class="flex items-center justify-between">
           <div v-if="!isSidebarCollapsed" class="flex items-center space-x-2">
-            <div class="w-7 h-7 rounded-lg bg-blue-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+            <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
               H
             </div>
             <span class="font-bold text-slate-800 text-base tracking-tight">HavenResearch</span>
@@ -64,7 +64,7 @@
 
       </div>
 
-      <!-- 侧边栏左下方: 用户 Profile 胶囊 (逻辑彻底纠正：未登录显式提示) -->
+      <!-- 侧边栏左下方: 用户 Profile 胶囊 -->
       <div class="p-3 border-t border-slate-200/80 bg-[#f1f5f9] relative">
         <el-dropdown trigger="click" class="w-full" @command="handleUserMenuCommand">
           <div class="flex items-center justify-between w-full p-2.5 rounded-xl hover:bg-slate-200/70 cursor-pointer transition-all">
@@ -102,11 +102,11 @@
               </template>
 
               <template v-else>
-                <el-dropdown-item command="login" class="!text-blue-600 !font-semibold !rounded-lg">
+                <el-dropdown-item command="login" class="!rounded-lg !font-medium">
                   <el-icon class="mr-1.5"><User /></el-icon>
                   账号登录
                 </el-dropdown-item>
-                <el-dropdown-item command="register" class="!text-slate-700 !font-semibold !rounded-lg">
+                <el-dropdown-item command="register" class="!rounded-lg !font-medium">
                   <el-icon class="mr-1.5"><Plus /></el-icon>
                   注册新账号
                 </el-dropdown-item>
@@ -119,111 +119,179 @@
     </el-aside>
 
     <!-- =================================================================== -->
-    <!-- 2. 右侧主视图区 (真正垂直水平精确居中 + 舒适现代视觉) -->
+    <!-- 2. 主区域 (支持双栏 / Artifact Canvas 面板) -->
     <!-- =================================================================== -->
-    <el-main class="flex-1 flex flex-col justify-between relative !bg-white !p-0 overflow-y-auto">
+    <el-container class="flex-1 flex flex-row overflow-hidden relative">
       
-      <!-- 顶部轻量 Header (数据源模式选择) -->
-      <div class="h-16 px-8 flex items-center justify-between border-b border-slate-100 bg-white/80 backdrop-blur-sm sticky top-0 z-20">
-        <div class="flex items-center space-x-2 text-xs font-semibold text-slate-500">
-          <span>HavenResearch Agent Pro 1.5</span>
-        </div>
-        <div class="flex items-center space-x-3">
-          <span class="text-xs text-slate-400 font-medium">知识库数据源:</span>
-          <el-select v-model="reportSource" size="small" class="!w-60">
-            <el-option value="hybrid" label="🌐 混合双引擎 (Web + Qdrant 知识库)" />
-            <el-option value="local" label="💾 纯本地知识库 (107本电子书)" />
-            <el-option value="web" label="🌐 纯全网实时检索 (Tavily AI)" />
-          </el-select>
-        </div>
-      </div>
+      <!-- 2.1 左/中: 对话视窗 -->
+      <div class="flex-1 flex flex-col h-full bg-[#f8fafc] relative overflow-hidden">
+        
+        <!-- 顶部功能栏 -->
+        <header class="h-14 border-b border-slate-200/70 bg-white/80 backdrop-blur-md px-6 flex items-center justify-between z-10">
+          <div class="flex items-center space-x-3">
+            <span class="font-bold text-slate-800 text-sm tracking-tight">Haven Research Agent Pro</span>
+            <el-tag size="small" type="primary" effect="light" class="!rounded-full !font-medium">v2.0 Stateful Multi-Turn</el-tag>
+          </div>
 
-      <!-- 中央 Hero 欢迎大字 (逻辑彻底纠正：未登录不盲显姓名) -->
-      <div v-if="messages.length === 0" class="flex-1 flex flex-col items-center justify-center my-auto text-center px-4 -mt-16">
-        <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 font-bold text-xl flex items-center justify-center shadow-xs mb-6 mx-auto">
-          ✦
-        </div>
-        <h1 class="text-3xl md:text-4xl font-semibold text-slate-900 mb-3 tracking-tight">
-          {{ currentUser ? `欢迎回来，${currentUser.username}` : 'HavenResearch，需要我做点什么？' }}
-        </h1>
-        <p class="text-sm text-slate-400 max-w-md font-normal">
-          深度技术问答、AI 架构设计、行业研报分析与长文档全自动合成
-        </p>
-      </div>
+          <div class="flex items-center space-x-3">
+            <!-- 数据源选择 -->
+            <el-select v-model="reportSource" size="small" class="!w-32">
+              <el-[#option] label="🌐 混合源" value="hybrid" />
+              <el-[#option] label="📚 知识库" value="local" />
+              <el-[#option] label="🔎 互联网" value="web" />
+            </el-select>
 
-      <!-- 对话消息列表 -->
-      <div v-else class="flex-1 max-w-3xl w-full mx-auto px-6 py-8 space-y-8 pb-36">
-        <div v-for="(msg, idx) in messages" :key="idx" class="space-y-4">
+            <!-- 切换 Artifacts 右侧画板按键 -->
+            <el-button v-if="artifact.content" 
+                       @click="showArtifactCanvas = !showArtifactCanvas"
+                       size="small" 
+                       :type="showArtifactCanvas ? 'primary' : 'default'" 
+                       class="!rounded-lg !text-xs">
+              <el-icon class="mr-1"><Document /></el-icon>
+              {{ showArtifactCanvas ? '隐藏文档画板' : '查看文档画板 (' + artifact.version + ')' }}
+            </el-button>
+          </div>
+        </header>
+
+        <!-- 对话消息列表 -->
+        <el-main class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 max-w-4xl mx-auto w-full pb-36" id="messages-container">
           
-          <!-- 用户提问 -->
-          <div v-if="msg.role === 'user'" class="flex justify-end">
-            <div class="bg-blue-600 text-white rounded-2xl px-5 py-3.5 max-w-xl text-sm leading-relaxed font-medium shadow-2xs">
-              {{ msg.content }}
+          <!-- 欢迎/空白页 -->
+          <div v-if="messages.length === 0" class="h-full flex flex-col items-center justify-center text-center my-auto py-16 space-y-6">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-400 text-white flex items-center justify-center text-2xl font-bold shadow-lg shadow-blue-500/20">
+              ✦
+            </div>
+            <div class="space-y-2">
+              <h2 class="text-xl font-bold text-slate-800 tracking-tight">智能研究 & 协同文档编辑助手</h2>
+              <p class="text-xs text-slate-500 max-w-md">支持多轮长对话背景记忆、智能意图分流与长文档 Artifacts 画布协同修改。</p>
+            </div>
+
+            <!-- 快捷启动 Prompt 胶囊 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-xl text-left pt-4">
+              <div @click="quickStart('我们团队是做智慧农业 SaaS 的，主要面向水稻种植')" class="p-3.5 bg-white border border-slate-200/80 hover:border-blue-400 rounded-2xl cursor-pointer shadow-2xs hover:shadow-xs transition-all">
+                <div class="font-semibold text-xs text-slate-800">🌱 1. 补充项目背景</div>
+                <div class="text-[11px] text-slate-400 mt-1">告知助手项目背景，暂不生成文档</div>
+              </div>
+              <div @click="quickStart('结合上述背景，帮我设计一份系统架构方案文档')" class="p-3.5 bg-white border border-slate-200/80 hover:border-blue-400 rounded-2xl cursor-pointer shadow-2xs hover:shadow-xs transition-all">
+                <div class="font-semibold text-xs text-slate-800">📝 2. 生成全量架构文档</div>
+                <div class="text-[11px] text-slate-400 mt-1">基于已知背景，创建 v1.0 文档画布</div>
+              </div>
             </div>
           </div>
 
-          <!-- Agent 回答 -->
-          <div v-else class="flex items-start space-x-4">
-            <div class="w-8 h-8 rounded-xl bg-blue-600 text-white font-bold text-xs flex items-center justify-center shadow-xs flex-shrink-0 mt-1">
-              H
-            </div>
+          <!-- 对话消息渲染 -->
+          <div v-for="(msg, idx) in messages" :key="idx" class="space-y-3">
             
-            <div class="flex-1 space-y-4">
-              <div v-if="msg.agent_persona" class="inline-flex items-center space-x-2 bg-slate-100 border border-slate-200/80 px-3 py-1 rounded-full text-xs text-slate-700 font-semibold">
-                <span>专家角色:</span>
-                <span class="text-slate-900 font-bold">{{ msg.agent_persona }}</span>
-              </div>
-
-              <div v-if="msg.steps && msg.steps.length > 0" class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs space-y-2 font-mono">
-                <div class="font-bold text-slate-700 flex items-center justify-between border-b border-slate-200 pb-2 mb-1">
-                  <span>Agent 自主推理步骤 ({{ msg.steps.length }})</span>
-                  <span v-if="msg.isStreaming" class="text-blue-600 animate-pulse font-sans">● 推理中...</span>
-                </div>
-                <div v-for="(step, sIdx) in msg.steps" :key="sIdx" class="text-slate-600 flex items-center space-x-2">
-                  <span class="text-blue-600 font-bold">›</span>
-                  <span>{{ step }}</span>
-                </div>
-              </div>
-
-              <!-- 报告长文档渲染 (清晰可读 15px) -->
-              <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm prose prose-slate max-w-none text-sm leading-relaxed text-slate-800"
-                   v-html="renderMarkdown(msg.content)">
-              </div>
-
-              <div v-if="msg.cost_summary" class="flex flex-wrap items-center gap-3 text-xs text-slate-500 pt-1">
-                <el-tag type="info" round size="small">💰 Token 消耗: {{ msg.cost_summary.total_tokens }} (${{ msg.cost_summary.total_cost_usd }})</el-tag>
-                <el-tag v-if="msg.sources" type="success" round size="small">📚 引用精排干货: {{ msg.sources.length }} 条</el-tag>
+            <!-- 用户消息 -->
+            <div v-if="msg.role === 'user'" class="flex justify-end">
+              <div class="bg-blue-600 text-white px-4 py-3 rounded-2xl rounded-tr-xs max-w-2xl text-xs font-normal shadow-xs leading-relaxed">
+                {{ msg.content }}
               </div>
             </div>
+
+            <!-- 助手消息 -->
+            <div v-else class="flex items-start space-x-3">
+              <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center text-xs font-bold shadow-xs flex-shrink-0 mt-0.5">
+                ✦
+              </div>
+
+              <div class="flex-1 bg-white border border-slate-200/80 rounded-2xl p-4 md:p-5 shadow-2xs text-xs space-y-3 overflow-hidden">
+                
+                <!-- 意图与 Agent 步骤标识 -->
+                <div v-if="msg.agent_persona || msg.intent" class="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
+                  <div class="text-[11px] font-semibold text-blue-600 flex items-center space-x-1.5">
+                    <span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+                    <span>{{ msg.agent_persona || 'Agent 已响应' }}</span>
+                  </div>
+                  <el-tag v-if="msg.intent" size="small" effect="plain" class="!rounded-md !text-[10px]">
+                    {{ getShortIntentLabel(msg.intent) }}
+                  </el-tag>
+                </div>
+
+                <!-- Markdown 内容 -->
+                <div class="prose prose-slate max-w-none text-slate-700 leading-relaxed overflow-x-auto" v-html="renderMarkdown(msg.content)"></div>
+
+                <!-- 资料来源 (Sources) -->
+                <div v-if="msg.sources && msg.sources.length > 0" class="pt-3 border-t border-slate-100">
+                  <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">参考引用的参考来源 ({{ msg.sources.length }})</div>
+                  <div class="flex flex-wrap gap-2">
+                    <a v-for="(src, sIdx) in msg.sources" 
+                       :key="sIdx" 
+                       :href="src.url" 
+                       target="_blank" 
+                       class="inline-flex items-center space-x-1 bg-slate-50 hover:bg-blue-50 border border-slate-200/80 hover:border-blue-300 text-slate-600 hover:text-blue-600 px-2.5 py-1 rounded-lg text-[11px] transition-all">
+                      <span class="truncate max-w-xs">{{ src.title || src.url }}</span>
+                      <el-icon class="text-[10px]"><TopRight /></el-icon>
+                    </a>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
           </div>
 
-        </div>
+        </el-main>
+
+        <!-- 底部胶囊输入框 (Gemini 风格 Dock) -->
+        <footer class="absolute bottom-6 left-0 right-0 max-w-3xl mx-auto px-4 z-30">
+          <div class="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-full p-2.5 shadow-2xl shadow-blue-500/10 flex items-center space-x-3 hover:border-blue-300 transition-all">
+            <input 
+              v-model="inputQuery" 
+              @keydown.enter="sendQuery"
+              type="text" 
+              placeholder="输入背景、追问或修改指令 (如: '把第三章补充模型对比')..." 
+              class="flex-1 bg-transparent px-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
+            />
+            <el-button 
+              @click="sendQuery" 
+              :loading="isGenerating"
+              type="primary" 
+              circle 
+              class="!w-9 !h-9 !rounded-full shadow-xs">
+              <el-icon v-if="!isGenerating"><Promotion /></el-icon>
+            </el-button>
+          </div>
+          <div class="text-[10px] text-center text-slate-400 mt-2">HavenResearch Pro 支持多轮背景记忆与局部文档修订</div>
+        </footer>
+
       </div>
 
-      <!-- 3. 极简浮动 Pill 输入框 -->
-      <div class="fixed bottom-8 left-1/2 -translate-x-1/2 max-w-2xl w-full px-4 z-20">
-        <div class="bg-white border border-slate-200 rounded-2xl p-2 shadow-xl shadow-slate-200/50 flex items-center space-x-2 transition-all focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-100">
-          
-          <input v-model="inputQuery" 
-                 @keydown.enter="sendQuery" 
-                 type="text" 
-                 placeholder="输入技术课题发起深度研究..." 
-                 class="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 focus:outline-none px-3 font-medium" />
+      <!-- 2.2 右侧: Artifacts 文档画布面板 (Canvas Side) -->
+      <div v-if="showArtifactCanvas && artifact.content" 
+           class="w-full md:w-[500px] lg:w-[600px] border-l border-slate-200/90 bg-white flex flex-col h-full shadow-2xl z-20 transition-all duration-300">
+        
+        <!-- Artifacts 画布 Header -->
+        <div class="h-14 border-b border-slate-200/80 px-5 flex items-center justify-between bg-slate-50/80">
+          <div class="flex items-center space-x-2 overflow-hidden">
+            <el-tag size="small" type="success" effect="dark" class="!font-bold !rounded-md">{{ artifact.version }}</el-tag>
+            <span class="font-bold text-slate-800 text-xs truncate">{{ artifact.title || '当前研究文档' }}</span>
+          </div>
 
-          <el-button @click="sendQuery" 
-                     :disabled="isGenerating" 
-                     type="primary" 
-                     size="default" 
-                     class="!rounded-xl !px-5 !font-semibold shadow-2xs">
-            <el-icon v-if="isGenerating" class="animate-spin mr-1"><Loading /></el-icon>
-            <span>发送</span>
-          </el-button>
+          <div class="flex items-center space-x-2">
+            <el-button @click="copyArtifactMarkdown" size="small" circle plain class="!border-slate-200">
+              <el-icon :size="14"><DocumentCopy /></el-icon>
+            </el-button>
+            <el-button @click="showArtifactCanvas = false" size="small" circle plain class="!border-slate-200">
+              <el-icon :size="14"><Close /></el-icon>
+            </el-button>
+          </div>
         </div>
+
+        <!-- 背景记忆胶囊 -->
+        <div v-if="artifact.background_context" class="bg-amber-50/80 border-b border-amber-200/60 px-5 py-2 text-[11px] text-amber-800 flex items-center space-x-1.5">
+          <span class="font-bold">🧠 记忆背景:</span>
+          <span class="truncate flex-1">{{ artifact.background_context }}</span>
+        </div>
+
+        <!-- Artifact Markdown 大文档查看区 -->
+        <div class="flex-1 overflow-y-auto p-6 prose prose-slate max-w-none text-xs leading-relaxed" v-html="renderMarkdown(artifact.content)"></div>
+
       </div>
 
-    </el-main>
+    </el-container>
 
-    <!-- 4. 现代化 AuthForm 登录 / 注册 Modal 弹窗 -->
+    <!-- 3. Auth 登录 / 注册 Modal 弹窗 -->
     <el-dialog v-model="showAuthModal" width="440px" :show-close="false" custom-class="!rounded-3xl">
       <AuthForm 
         :closeable="true" 
@@ -261,6 +329,15 @@ export default {
     const currentSessionId = ref("")
     const historySessions = ref([])
     const token = ref(localStorage.getItem("haven_token") || "")
+
+    // Artifacts 画布状态
+    const showArtifactCanvas = ref(false)
+    const artifact = ref({
+      version: "v1.0",
+      title: "文档画布",
+      background_context: "",
+      content: ""
+    })
 
     onMounted(async () => {
       if (token.value) {
@@ -305,24 +382,23 @@ export default {
         ElMessage.success(isRegister ? "注册并登录成功！" : "登录成功！")
         await fetchSessions()
       } catch (e) {
-        ElMessage.error(e.response?.data?.detail || "认证失败，请检查账号或密码")
+        ElMessage.error(e.response?.data?.detail || "认证失败")
       }
     }
 
-    async function logout() {
-      try {
-        await authApi.logout()
-      } catch (e) {}
+    function logout() {
       token.value = ""
       currentUser.value = null
       historySessions.value = []
       messages.value = []
+      artifact.value.content = ""
       localStorage.removeItem("haven_token")
       ElMessage.info("已退出登录")
     }
 
     function startNewChat() {
       messages.value = []
+      artifact.value.content = ""
       currentSessionId.value = "session_" + Date.now()
     }
 
@@ -335,6 +411,23 @@ export default {
           content: m.content,
           sources: m.sources
         }))
+
+        // 加载当前会话的 Artifact 画布
+        try {
+          const artRes = await chatApi.getArtifact(sessionId)
+          if (artRes.data && artRes.data.current_document) {
+            artifact.value.content = artRes.data.current_document
+            artifact.value.version = artRes.data.document_version || "v1.0"
+            artifact.value.title = artRes.data.title || "技术研究文档"
+            artifact.value.background_context = artRes.data.background_context || ""
+            showArtifactCanvas.value = true
+          } else {
+            artifact.value.content = ""
+          }
+        } catch (e) {
+          artifact.value.content = ""
+        }
+
         scrollToBottom()
       } catch (e) {
         messages.value = []
@@ -344,12 +437,27 @@ export default {
     async function deleteSession(sessionId) {
       try {
         await chatApi.deleteSession(sessionId)
-        ElMessage.success("会话已成功删除")
+        ElMessage.success("会话已删除")
         await fetchSessions()
         if (currentSessionId.value === sessionId) {
           startNewChat()
         }
       } catch (e) {}
+    }
+
+    function quickStart(topic) {
+      inputQuery.value = topic
+      sendQuery()
+    }
+
+    function getShortIntentLabel(intent) {
+      const map = {
+        "CHAT_ONLY": "💬 简短答疑",
+        "GENERATE_DOC": "📝 创建文档",
+        "EDIT_DOC": "✏️ 局部修饰",
+        "RESEARCH_QNA": "🔍 深度搜索"
+      }
+      return map[intent] || "✦ Agent"
     }
 
     async function sendQuery() {
@@ -362,54 +470,80 @@ export default {
 
       const assistantMsg = {
         role: "assistant",
-        agent_persona: "",
-        steps: [],
+        agent_persona: "正在智能识别意图...",
+        intent: "",
         content: "",
-        isStreaming: true
+        sources: []
       }
       messages.value.push(assistantMsg)
       scrollToBottom()
 
       const sessionId = currentSessionId.value || ("session_" + Date.now())
+      currentSessionId.value = sessionId
+
       const url = `/api/v1/chat/stream?session_id=${sessionId}&query=${encodeURIComponent(query)}&report_source=${reportSource.value}`
       const eventSource = new EventSource(url)
 
-      eventSource.onmessage = function(e) {
+      let currentIntent = ""
+
+      eventSource.onmessage = (event) => {
         try {
-          const data = JSON.parse(e.data)
-          if (data.type === "step") {
-            assistantMsg.steps.push(data.message)
+          const data = JSON.parse(event.data)
+          
+          if (data.type === "intent_meta") {
+            currentIntent = data.intent
+            assistantMsg.intent = data.intent
+            if (data.has_document && !artifact.value.content) {
+              showArtifactCanvas.value = true
+            }
           } else if (data.type === "persona") {
-            assistantMsg.agent_persona = data.persona
+            assistantMsg.agent_persona = data.content
           } else if (data.type === "chunk") {
             assistantMsg.content += data.content
+            if (currentIntent === "EDIT_DOC" || currentIntent === "GENERATE_DOC") {
+              artifact.value.content = assistantMsg.content
+              showArtifactCanvas.value = true
+            }
           } else if (data.type === "complete") {
-            assistantMsg.isStreaming = false
-            assistantMsg.cost_summary = data.cost_summary
-            assistantMsg.sources = data.sources
+            assistantMsg.sources = data.sources || []
+            if (data.version) {
+              artifact.value.version = data.version
+            }
+            if (data.document) {
+              artifact.value.content = data.document
+              showArtifactCanvas.value = true
+            }
             isGenerating.value = false
             fetchSessions()
             eventSource.close()
           }
           scrollToBottom()
-        } catch (err) {}
+        } catch (e) {
+          console.error("SSE JSON error:", e)
+        }
       }
 
-      eventSource.onerror = function() {
-        assistantMsg.isStreaming = false
+      eventSource.onerror = () => {
         isGenerating.value = false
         eventSource.close()
       }
     }
 
     function renderMarkdown(content) {
-      if (!content) return "<span class='typing-cursor text-blue-600 font-semibold'>正在与 DeepSeek API 深度通信...</span>"
+      if (!content) return "<span class='typing-cursor text-blue-600 font-semibold'>正在推流分析中...</span>"
       return marked.parse(content)
+    }
+
+    function copyArtifactMarkdown() {
+      if (!artifact.value.content) return
+      navigator.clipboard.writeText(artifact.value.content)
+      ElMessage.success("已复制文档 Markdown 到剪贴板！")
     }
 
     function scrollToBottom() {
       nextTick(() => {
-        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
+        const container = document.getElementById("messages-container")
+        if (container) container.scrollTop = container.scrollHeight
       })
     }
 
@@ -424,6 +558,8 @@ export default {
       currentUser,
       currentSessionId,
       historySessions,
+      showArtifactCanvas,
+      artifact,
       openAuthModal,
       handleUserMenuCommand,
       handleAuthSubmit,
@@ -431,8 +567,11 @@ export default {
       startNewChat,
       loadSession,
       deleteSession,
+      quickStart,
+      getShortIntentLabel,
       sendQuery,
-      renderMarkdown
+      renderMarkdown,
+      copyArtifactMarkdown
     }
   }
 }
@@ -442,7 +581,6 @@ export default {
 .typing-cursor::after {
   content: '▋';
   animation: blink 1s infinite;
-  color: #2563eb;
 }
 @keyframes blink {
   0%, 100% { opacity: 1; }
@@ -452,7 +590,7 @@ export default {
 .prose h1, .prose h2, .prose h3 {
   color: #1e293b;
   font-weight: 700;
-  margin-top: 1.25rem;
+  margin-top: 1rem;
   margin-bottom: 0.5rem;
 }
 .prose table {
@@ -467,6 +605,5 @@ export default {
 }
 .prose th {
   background-color: #f8fafc;
-  color: #0f172a;
 }
 </style>

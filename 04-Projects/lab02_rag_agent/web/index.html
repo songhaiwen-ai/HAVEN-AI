@@ -316,10 +316,12 @@
                     eventSource.onmessage = function(e) {
                         try {
                             const data = JSON.parse(e.data);
-                            if (data.type === "step") {
+                            if (data.type === "intent_meta") {
+                                assistantMsg.intent = data.intent;
+                            } else if (data.type === "step") {
                                 assistantMsg.steps.push(data.message);
                             } else if (data.type === "persona") {
-                                assistantMsg.agent_persona = data.persona;
+                                assistantMsg.agent_persona = data.content || data.persona;
                             } else if (data.type === "chunk") {
                                 assistantMsg.content += data.content;
                             } else if (data.type === "complete") {

@@ -27,6 +27,8 @@ from haven_research.core import logger
 from haven_research.schemas.dto import ResearchRequestDTO, ResearchReportDTO, ReportType, ReportSource
 from haven_research.agent import HavenResearcher
 from haven_research.ingestion import LocalKnowledgeIngestionService
+from haven_research.router import IntentRouter, UserIntent
+from haven_research.editor import DocumentEditor
 
 # 引入数据库持久化模型与 Auth 鉴权网关
 from haven_research.db import db_manager, User, ChatSession, ChatMessage
@@ -38,6 +40,9 @@ from haven_research.api.auth import (
     decode_access_token,
     get_current_user_payload
 )
+
+intent_router = IntentRouter()
+document_editor = DocumentEditor()
 
 app = FastAPI(
     title="HavenResearch Deep Research Web ChatGPT API",
@@ -234,20 +239,40 @@ async def get_session_messages(session_id: str, authorization: Optional[str] = D
     return result
 
 
+@app.get("/api/v1/chat/sessions/{session_id}/artifact")
+async def get_session_artifact(session_id: str, authorization: Optional[str] = Depends(security)):
+    """获取指定会话的 Artifact 文档画布状态 (包含背景记忆、当前文档与版本号)"""
+    token_str = authorization.credentials if authorization else None
+    user_id = _get_user_id_from_header(f"Bearer {token_str}" if token_str else None)
+
+    db = next(db_manager.get_db())
+    session_obj = db.query(ChatSession).filter(ChatSession.session_id == session_id, ChatSession.user_id == user_id).first()
+    if not session_obj:
+        raise HTTPException(status_code=404, detail="会话不存在")
+
+    return {
+        "session_id": session_obj.session_id,
+        "title": session_obj.title,
+        "background_context": session_obj.background_context or "",
+        "current_document": session_obj.current_document or "",
+        "document_version": session_obj.document_version or "v1.0"
+    }
+
+
 # ------------------------------------------------------------------------------
-# 4. SSE (Server-Sent Events) 打字机流式 API 核心 Endpoint
+# 4. SSE (Server-Sent Events) 打字机流式 API 核心 Endpoint (带智能意图分流)
 # ------------------------------------------------------------------------------
 @app.get("/api/v1/chat/stream")
 async def chat_stream_sse(
     session_id: str = Query(..., description="会话 ID"),
-    query: str = Query(..., description="用户研究课题"),
+    query: str = Query(..., description="用户研究课题或指令"),
     report_source: str = Query("hybrid", description="数据源模式: hybrid / local / web"),
     authorization: Optional[str] = Depends(security)
 ):
     """
-    【网页版 ChatGPT 核心推流引擎】:
-    实时推流 Agent Persona、推理步骤 (Step Events)、逐字 Markdown 报告，
-    并将提问与回答持久化存储到 MySQL/SQLite 数据库中。
+    【带状态意图路由的多轮协同 Agent 推流引擎】:
+    1. 通过 IntentRouter 解析用户真实意图 (CHAT_ONLY / GENERATE_DOC / EDIT_DOC / RESEARCH_QNA) 并提取背景知识。
+    2. 分流推流对话答疑、全量文档生成或已有文档的局部增量修饰。
     """
     token_str = authorization.credentials if authorization else None
     user_id = _get_user_id_from_header(f"Bearer {token_str}" if token_str else None)
@@ -255,7 +280,6 @@ async def chat_stream_sse(
     source_enum = ReportSource(report_source) if report_source in [e.value for e in ReportSource] else ReportSource.Hybrid
     req_dto = ResearchRequestDTO(query=query, report_source=source_enum, max_subtopics=3)
 
-    # 1. 确保关联的 ChatSession 会话记录存在 (若为新会话则自动创建)
     db = next(db_manager.get_db())
     session_obj = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
     if not session_obj:
@@ -269,32 +293,122 @@ async def chat_stream_sse(
     elif session_obj.title in ["新深度研究对话", "新建深度研究会话"]:
         session_obj.title = query[:30]
 
-    # 2. 记录用户提问消息到 MySQL/SQLite
+    # 执行智能意图路由与背景萃取
+    intent, updated_bg = intent_router.route_and_extract(
+        query=query,
+        current_doc=session_obj.current_document,
+        existing_background=session_obj.background_context
+    )
+    session_obj.background_context = updated_bg
+
+    # 记录用户提问
     user_msg = ChatMessage(session_id=session_id, user_id=user_id, role="user", content=query)
     db.add(user_msg)
     db.commit()
 
+    current_doc_snapshot = session_obj.current_document or ""
+    current_ver_snapshot = session_obj.document_version or "v1.0"
+    bg_snapshot = session_obj.background_context or ""
+
     async def event_generator():
-        researcher = HavenResearcher(req_dto)
+        # 1. 优先推送 Intent 元数据事件给前端
+        yield {
+            "data": json.dumps({
+                "type": "intent_meta",
+                "intent": intent.value,
+                "document_version": current_ver_snapshot,
+                "has_document": bool(current_doc_snapshot)
+            }, ensure_ascii=False)
+        }
+
         full_report_parts = []
         sources_data = []
 
-        # 消费 Agent 的真·Token 实时流式生成器
-        async for event in researcher.conduct_research_stream():
-            if event["type"] == "chunk":
-                full_report_parts.append(event["content"])
-            elif event["type"] == "complete":
-                sources_data = event.get("sources", [])
-            
-            yield {"data": json.dumps(event, ensure_ascii=False)}
+        if intent == UserIntent.EDIT_DOC:
+            # 模式 A: 针对已有文档做局部增量修饰
+            async for event in document_editor.edit_document_stream(
+                current_document=current_doc_snapshot,
+                edit_instruction=query,
+                background_context=bg_snapshot,
+                current_version=current_ver_snapshot
+            ):
+                if event["type"] == "chunk":
+                    full_report_parts.append(event["content"])
+                elif event["type"] == "complete":
+                    new_ver = event.get("version", current_ver_snapshot)
+                    full_markdown = event.get("document", "".join(full_report_parts))
+                    # 更新数据库里的最新文档与版本号
+                    db_up = next(db_manager.get_db())
+                    sess = db_up.query(ChatSession).filter(ChatSession.session_id == session_id).first()
+                    if sess:
+                        sess.current_document = full_markdown
+                        sess.document_version = new_ver
+                        db_up.commit()
 
-        # 2. 将 Agent 回答与全量 Markdown 持久化落盘到 MySQL/SQLite
-        full_markdown = "".join(full_report_parts)
+                yield {"data": json.dumps(event, ensure_ascii=False)}
+
+        elif intent in [UserIntent.GENERATE_DOC, UserIntent.RESEARCH_QNA]:
+            # 模式 B: 全新文档生成或深度搜索问答
+            researcher = HavenResearcher(req_dto)
+            async for event in researcher.conduct_research_stream():
+                if event["type"] == "chunk":
+                    full_report_parts.append(event["content"])
+                elif event["type"] == "complete":
+                    sources_data = event.get("sources", [])
+                    if intent == UserIntent.GENERATE_DOC:
+                        full_markdown = "".join(full_report_parts)
+                        db_up = next(db_manager.get_db())
+                        sess = db_up.query(ChatSession).filter(ChatSession.session_id == session_id).first()
+                        if sess:
+                            sess.current_document = full_markdown
+                            sess.document_version = "v1.0"
+                            db_up.commit()
+
+                yield {"data": json.dumps(event, ensure_ascii=False)}
+
+        else:
+            # 模式 C: CHAT_ONLY 纯对话/补充背景记录 (不碰文档)
+            yield {
+                "data": json.dumps({
+                    "type": "persona",
+                    "content": "[Haven Assistant] 收到！已记录您的补充信息/答疑。"
+                }, ensure_ascii=False)
+            }
+
+            try:
+                if intent_router.client:
+                    resp = intent_router.client.chat.completions.create(
+                        model=getattr(settings, "llm_model", "deepseek-chat"),
+                        messages=[
+                            {"role": "system", "content": "你是一个严谨平易近人的技术架构助手。根据用户的对话和背景补充，做出精准专业的简短回答。无需吐出大段排版文档。"},
+                            {"role": "user", "content": f"项目背景: {bg_snapshot}\n用户输入: {query}"}
+                        ],
+                        stream=True
+                    )
+                    for chunk in resp:
+                        if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                            c = chunk.choices[0].delta.content
+                            full_report_parts.append(c)
+                            yield {"data": json.dumps({"type": "chunk", "content": c}, ensure_ascii=False)}
+                else:
+                    msg = "收到！已记录您的项目背景信息，后续生成或修改文档时将自动带入该约束。"
+                    full_report_parts.append(msg)
+                    yield {"data": json.dumps({"type": "chunk", "content": msg}, ensure_ascii=False)}
+
+            except Exception as e:
+                err_msg = f"回答出错: {str(e)}"
+                full_report_parts.append(err_msg)
+                yield {"data": json.dumps({"type": "chunk", "content": err_msg}, ensure_ascii=False)}
+
+            yield {"data": json.dumps({"type": "complete", "sources": []}, ensure_ascii=False)}
+
+        # 持久化保存助手回复到 ChatMessage
+        full_assistant_text = "".join(full_report_parts)
         assistant_msg = ChatMessage(
             session_id=session_id,
             user_id=user_id,
             role="assistant",
-            content=full_markdown,
+            content=full_assistant_text,
             sources_json=json.dumps(sources_data, ensure_ascii=False)
         )
         db_inner = next(db_manager.get_db())
