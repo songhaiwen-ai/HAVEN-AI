@@ -282,6 +282,7 @@ async def chat_stream_sse(
     1. 通过 IntentRouter 解析用户真实意图 (CHAT_ONLY / GENERATE_DOC / EDIT_DOC / RESEARCH_QNA) 并提取背景知识。
     2. 分流推流对话答疑、全量文档生成或已有文档的局部增量修饰。
     """
+    logger.info(f"=== [SSE Connection] 收到用户提问请求: session_id='{session_id}', query='{query}' ===")
     token_str = authorization.credentials if authorization else None
     user_id = _get_user_id_from_header(f"Bearer {token_str}" if token_str else None)
     
@@ -298,28 +299,46 @@ async def chat_stream_sse(
         )
         db.add(session_obj)
         db.flush()
+        logger.info(f"[SSE DB] 自动为您创建了新的 ChatSession 记录: {session_id}")
     elif session_obj.title in ["新深度研究对话", "新建深度研究会话"]:
         session_obj.title = query[:30]
-
-    # 执行智能意图路由与背景萃取
-    intent, updated_bg = intent_router.route_and_extract(
-        query=query,
-        current_doc=session_obj.current_document,
-        existing_background=session_obj.background_context
-    )
-    session_obj.background_context = updated_bg
 
     # 记录用户提问
     user_msg = ChatMessage(session_id=session_id, user_id=user_id, role="user", content=query)
     db.add(user_msg)
     db.commit()
+    logger.info(f"[SSE DB] 用户提问落盘成功, 开始建立 EventSource 流式响应...")
 
     current_doc_snapshot = session_obj.current_document or ""
     current_ver_snapshot = session_obj.document_version or "v1.0"
     bg_snapshot = session_obj.background_context or ""
 
     async def event_generator():
-        # 1. 优先推送 Intent 元数据事件给前端
+        logger.info(f"[SSE Stream] 启动生成器，推送初始 Persona 给前端...")
+        yield {
+            "data": json.dumps({
+                "type": "persona",
+                "content": "正在智能识别意图与检索上下文..."
+            }, ensure_ascii=False)
+        }
+
+        # 在异步流中精准判定意图
+        intent, updated_bg = intent_router.route_and_extract(
+            query=query,
+            current_doc=current_doc_snapshot,
+            existing_background=bg_snapshot
+        )
+
+        # 更新数据库保存最新的背景上下文
+        if updated_bg != bg_snapshot:
+            db_bg = next(db_manager.get_db())
+            sess_bg = db_bg.query(ChatSession).filter(ChatSession.session_id == session_id).first()
+            if sess_bg:
+                sess_bg.background_context = updated_bg
+                db_bg.commit()
+                logger.info(f"[SSE Memory] 背景隐式记忆更新: '{updated_bg}'")
+
+        # 优先推送 Intent 元数据事件给前端
         yield {
             "data": json.dumps({
                 "type": "intent_meta",
@@ -328,16 +347,17 @@ async def chat_stream_sse(
                 "has_document": bool(current_doc_snapshot)
             }, ensure_ascii=False)
         }
+        logger.info(f"[SSE Intent] 匹配意图: {intent.value} | 对应处理流程准备就绪...")
 
         full_report_parts = []
         sources_data = []
 
         if intent == UserIntent.EDIT_DOC:
-            # 模式 A: 针对已有文档做局部增量修饰
+            logger.info(f"[SSE Workflow] 触发 EDIT_DOC (文档局部修订模式)...")
             async for event in document_editor.edit_document_stream(
                 current_document=current_doc_snapshot,
                 edit_instruction=query,
-                background_context=bg_snapshot,
+                background_context=updated_bg or bg_snapshot,
                 current_version=current_ver_snapshot
             ):
                 if event["type"] == "chunk":
@@ -345,18 +365,18 @@ async def chat_stream_sse(
                 elif event["type"] == "complete":
                     new_ver = event.get("version", current_ver_snapshot)
                     full_markdown = event.get("document", "".join(full_report_parts))
-                    # 更新数据库里的最新文档与版本号
                     db_up = next(db_manager.get_db())
                     sess = db_up.query(ChatSession).filter(ChatSession.session_id == session_id).first()
                     if sess:
                         sess.current_document = full_markdown
                         sess.document_version = new_ver
                         db_up.commit()
+                        logger.info(f"[SSE DB] EDIT_DOC 更新完成，保存最新文档版本 {new_ver}")
 
                 yield {"data": json.dumps(event, ensure_ascii=False)}
 
         elif intent in [UserIntent.GENERATE_DOC, UserIntent.RESEARCH_QNA]:
-            # 模式 B: 全新文档生成或深度搜索问答
+            logger.info(f"[SSE Workflow] 触发 {intent.value} (Agent 搜索与全量生成模式)...")
             researcher = HavenResearcher(req_dto)
             async for event in researcher.conduct_research_stream():
                 if event["type"] == "chunk":
@@ -371,11 +391,12 @@ async def chat_stream_sse(
                             sess.current_document = full_markdown
                             sess.document_version = "v1.0"
                             db_up.commit()
+                            logger.info(f"[SSE DB] GENERATE_DOC 完成，新建 v1.0 文档画布落盘")
 
                 yield {"data": json.dumps(event, ensure_ascii=False)}
 
         else:
-            # 模式 C: CHAT_ONLY 纯对话/补充背景记录 (不碰文档)
+            logger.info(f"[SSE Workflow] 触发 CHAT_ONLY (纯对话/背景记录模式)...")
             yield {
                 "data": json.dumps({
                     "type": "persona",
@@ -385,25 +406,31 @@ async def chat_stream_sse(
 
             try:
                 if async_client:
+                    logger.info(f"[SSE Chat] 发起 AsyncOpenAI 对话推流...")
                     resp = await async_client.chat.completions.create(
                         model=getattr(settings, "llm_model", "deepseek-chat"),
                         messages=[
                             {"role": "system", "content": "你是一个严谨平易近人的技术架构助手。根据用户的对话和背景补充，做出精准专业的简短回答。无需吐出大段排版文档。"},
-                            {"role": "user", "content": f"项目背景: {bg_snapshot}\n用户输入: {query}"}
+                            {"role": "user", "content": f"项目背景: {updated_bg or bg_snapshot}\n用户输入: {query}"}
                         ],
                         stream=True
                     )
+                    chunk_count = 0
                     async for chunk in resp:
                         if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
                             c = chunk.choices[0].delta.content
                             full_report_parts.append(c)
+                            chunk_count += 1
                             yield {"data": json.dumps({"type": "chunk", "content": c}, ensure_ascii=False)}
+                    logger.info(f"[SSE Chat] 对话推流完毕，共推流 {chunk_count} 个 Token 片段")
+
                 else:
                     msg = "收到！已记录您的项目背景信息，后续生成或修改文档时将自动带入该约束。"
                     full_report_parts.append(msg)
                     yield {"data": json.dumps({"type": "chunk", "content": msg}, ensure_ascii=False)}
 
             except Exception as e:
+                logger.error(f"[SSE Chat Error] 聊天对话推流产生异常: {e}")
                 err_msg = f"回答出错: {str(e)}"
                 full_report_parts.append(err_msg)
                 yield {"data": json.dumps({"type": "chunk", "content": err_msg}, ensure_ascii=False)}
@@ -422,5 +449,6 @@ async def chat_stream_sse(
         db_inner = next(db_manager.get_db())
         db_inner.add(assistant_msg)
         db_inner.commit()
+        logger.info(f"=== [SSE Finish] 会话 {session_id} 处理完毕并成功持久化！ ===")
 
     return EventSourceResponse(event_generator())
