@@ -8,7 +8,7 @@ haven_research/editor/document_editor.py - Artifacts 智能文档协同编辑器
 
 import json
 from typing import AsyncGenerator, Dict, Any, Optional, List
-from openai import OpenAI
+from openai import AsyncOpenAI
 from haven_research.config import settings
 from haven_research.core import logger
 
@@ -19,7 +19,7 @@ class DocumentEditor:
     def __init__(self):
         self.client = None
         if getattr(settings, "openai_api_key", None):
-            self.client = OpenAI(
+            self.client = AsyncOpenAI(
                 api_key=settings.openai_api_key,
                 base_url=getattr(settings, "openai_base_url", "https://api.deepseek.com")
             )
@@ -69,22 +69,23 @@ class DocumentEditor:
         ]
 
         try:
-            response = self.client.chat.completions.create(
-                model=getattr(settings, "llm_model", "deepseek-chat"),
-                messages=messages,
-                temperature=0.3,
-                stream=True
-            )
+            if self.client:
+                response = await self.client.chat.completions.create(
+                    model=getattr(settings, "llm_model", "deepseek-chat"),
+                    messages=messages,
+                    temperature=0.3,
+                    stream=True
+                )
 
-            full_chunks = []
-            for chunk in response:
-                if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
-                    delta = chunk.choices[0].delta.content
-                    full_chunks.append(delta)
-                    yield {
-                        "type": "chunk",
-                        "content": delta
-                    }
+                full_chunks = []
+                async for chunk in response:
+                    if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                        delta = chunk.choices[0].delta.content
+                        full_chunks.append(delta)
+                        yield {
+                            "type": "chunk",
+                            "content": delta
+                        }
 
             full_revised_doc = "".join(full_chunks)
             yield {

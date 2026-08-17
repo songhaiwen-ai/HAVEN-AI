@@ -27,6 +27,7 @@ from haven_research.core import logger
 from haven_research.schemas.dto import ResearchRequestDTO, ResearchReportDTO, ReportType, ReportSource
 from haven_research.agent import HavenResearcher
 from haven_research.ingestion import LocalKnowledgeIngestionService
+from openai import AsyncOpenAI
 from haven_research.router import IntentRouter, UserIntent
 from haven_research.editor import DocumentEditor
 
@@ -43,6 +44,13 @@ from haven_research.api.auth import (
 
 intent_router = IntentRouter()
 document_editor = DocumentEditor()
+
+async_client = None
+if getattr(settings, "openai_api_key", None):
+    async_client = AsyncOpenAI(
+        api_key=settings.openai_api_key,
+        base_url=getattr(settings, "openai_base_url", "https://api.deepseek.com")
+    )
 
 app = FastAPI(
     title="HavenResearch Deep Research Web ChatGPT API",
@@ -376,8 +384,8 @@ async def chat_stream_sse(
             }
 
             try:
-                if intent_router.client:
-                    resp = intent_router.client.chat.completions.create(
+                if async_client:
+                    resp = await async_client.chat.completions.create(
                         model=getattr(settings, "llm_model", "deepseek-chat"),
                         messages=[
                             {"role": "system", "content": "你是一个严谨平易近人的技术架构助手。根据用户的对话和背景补充，做出精准专业的简短回答。无需吐出大段排版文档。"},
@@ -385,7 +393,7 @@ async def chat_stream_sse(
                         ],
                         stream=True
                     )
-                    for chunk in resp:
+                    async for chunk in resp:
                         if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
                             c = chunk.choices[0].delta.content
                             full_report_parts.append(c)
