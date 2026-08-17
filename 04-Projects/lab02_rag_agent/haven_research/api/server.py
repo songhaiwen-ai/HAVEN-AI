@@ -138,6 +138,12 @@ async def get_me(payload: dict = Depends(get_current_user_payload)):
     return {"id": user.id, "username": user.username}
 
 
+@app.post("/api/v1/auth/logout")
+async def logout():
+    """用户退出登录"""
+    return {"success": True, "message": "已成功退出登录"}
+
+
 # ------------------------------------------------------------------------------
 # 3. 历史会话管理 API (创建 / 获取列表 / 消息历史 / 删除)
 # ------------------------------------------------------------------------------
