@@ -421,8 +421,11 @@ async def chat_stream_sse(
                     resp = await client.chat.completions.create(
                         model=settings.get_effective_model_name(),
                         messages=[
-                            {"role": "system", "content": "你是一个严谨平易近人的技术架构助手。根据用户的对话和背景补充，做出精准专业的简短回答。无需吐出大段排版文档。"},
-                            {"role": "user", "content": f"项目背景: {updated_bg or bg_snapshot}\n用户输入: {query}"}
+                            {"role": "system", "content": """你是一个名为 HavenResearcher 的自主深度研究 Agent (Deep Research Agent)，1:1 对标 gpt-researcher 架构。
+你的核心定位是：基于全网实时检索、ArXiv 学术论文 MCP、GitHub 源码 MCP 及本地向量库，帮助用户进行自动化深度研究并生成/编辑高质量的研究报告文档 (Artifacts)。
+
+当用户打招呼或询问你的能力时，请精准展示你的【自主深度研究 (Deep Research)】与【Artifacts 研报生成/多轮修改】能力。语气专业、简洁、客观。无需回答无关的通用软件架构咨询。"""},
+                            {"role": "user", "content": f"已记忆的项目背景: {updated_bg or bg_snapshot or '暂无'}\n用户输入: {query}"}
                         ],
                         stream=True
                     )
