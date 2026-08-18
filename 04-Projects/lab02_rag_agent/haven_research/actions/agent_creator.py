@@ -39,14 +39,16 @@ async def choose_agent(query: str, cfg: Any = None) -> Dict[str, str]:
 
     user_prompt = f"研究课题：{query}\n请生成该课题的最佳 Agent 角色与人设 Prompt："
 
-    client = openai.AsyncOpenAI(
-        api_key=settings.openai_api_key,
-        base_url=settings.openai_base_url
-    )
+    client = settings.get_async_llm_client()
+    if not client:
+        return {
+            "agent": "通用技术研究专家",
+            "role": "你是一名资深通用技术研究专家，负责生成客观、详实的研究报告。"
+        }
 
     try:
         response = await client.chat.completions.create(
-            model=settings.llm_model,
+            model=settings.get_effective_model_name(),
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}

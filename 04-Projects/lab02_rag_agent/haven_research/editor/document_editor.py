@@ -17,12 +17,7 @@ class DocumentEditor:
     """Artifacts 文档编辑与修订引擎"""
 
     def __init__(self):
-        self.client = None
-        if getattr(settings, "openai_api_key", None):
-            self.client = AsyncOpenAI(
-                api_key=settings.openai_api_key,
-                base_url=getattr(settings, "openai_base_url", "https://api.deepseek.com")
-            )
+        pass
 
     async def edit_document_stream(
         self,
@@ -69,8 +64,9 @@ class DocumentEditor:
         ]
 
         try:
-            if self.client:
-                response = await self.client.chat.completions.create(
+            client = settings.get_async_llm_client()
+            if client:
+                response = await client.chat.completions.create(
                     model=settings.get_effective_model_name(),
                     messages=messages,
                     temperature=0.3,

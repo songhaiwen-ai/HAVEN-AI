@@ -26,12 +26,7 @@ class IntentRouter:
     """智能意图路由与背景抽取引擎"""
 
     def __init__(self):
-        self.client = None
-        if getattr(settings, "openai_api_key", None):
-            self.client = OpenAI(
-                api_key=settings.openai_api_key,
-                base_url=getattr(settings, "openai_base_url", "https://api.deepseek.com")
-            )
+        pass
 
     def route_and_extract(
         self,
@@ -64,7 +59,8 @@ class IntentRouter:
                 return UserIntent.CHAT_ONLY, existing_background
 
         # 尝试调用 LLM 进行极速智能判定 (JSON mode)
-        if self.client:
+        client = settings.get_llm_client()
+        if client:
             try:
                 system_prompt = """你是一个智能 Agent 系统的意图分类与背景萃取引擎。
 请分析用户最新的输入，输出标准的 JSON 格式：

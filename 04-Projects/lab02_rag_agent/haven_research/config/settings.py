@@ -72,15 +72,42 @@ class Settings(BaseSettings):
 
     def get_llm_client(self):
         """
-        获取配置好的标准 OpenAI / DeepSeek / 通义千问 客户端实例
+        获取通用 OpenAI 兼容标准同步客户端 (支持任意 Provider: Qwen / DeepSeek / OpenAI / 硅基流动 / Ollama 等)
         """
-        if not self.openai_api_key:
+        from dotenv import load_dotenv
+        if ENV_FILE_PATH.exists():
+            load_dotenv(str(ENV_FILE_PATH))
+            
+        api_key = os.getenv("OPENAI_API_KEY") or self.openai_api_key
+        base_url = os.getenv("OPENAI_BASE_URL") or self.openai_base_url
+        
+        if not api_key:
             return None
             
         from openai import OpenAI
         return OpenAI(
-            api_key=self.openai_api_key,
-            base_url=self.openai_base_url
+            api_key=api_key,
+            base_url=base_url
+        )
+
+    def get_async_llm_client(self):
+        """
+        获取通用 OpenAI 兼容标准异步客户端 (支持任意 Provider: Qwen / DeepSeek / OpenAI / 硅基流动 / Ollama 等)
+        """
+        from dotenv import load_dotenv
+        if ENV_FILE_PATH.exists():
+            load_dotenv(str(ENV_FILE_PATH))
+            
+        api_key = os.getenv("OPENAI_API_KEY") or self.openai_api_key
+        base_url = os.getenv("OPENAI_BASE_URL") or self.openai_base_url
+        
+        if not api_key:
+            return None
+            
+        from openai import AsyncOpenAI
+        return AsyncOpenAI(
+            api_key=api_key,
+            base_url=base_url
         )
 
 

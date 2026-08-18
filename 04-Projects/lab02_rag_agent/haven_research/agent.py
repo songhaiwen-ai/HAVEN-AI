@@ -64,10 +64,6 @@ class HavenResearcher:
         self.verifier = CitationVerifierGate()
         self.cost_tracker = CostTracker()
         
-        self.openai_client = openai.AsyncOpenAI(
-            api_key=settings.openai_api_key,
-            base_url=settings.openai_base_url
-        )
         self.agent_info: Dict[str, str] = {}
 
     async def conduct_research_stream(self) -> AsyncGenerator[Dict[str, Any], None]:
@@ -233,10 +229,18 @@ class HavenResearcher:
             f"请为我撰写一份完整的深度技术研究报告："
         )
 
+        client = settings.get_async_llm_client()
+        if not client:
+            logger.error("[Agent Error] 未配置有效的大模型 API Key，终止研报合成。")
+            yield "【错误】：未检测到可用的 LLM API Key，请在 .env 中配置 OPENAI_API_KEY。"
+            return
+
+        model_name = settings.get_effective_model_name()
+
         for attempt in range(1, max_retries + 1):
             try:
-                response = await self.openai_client.chat.completions.create(
-                    model=settings.llm_model,
+                response = await client.chat.completions.create(
+                    model=model_name,
                     messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}

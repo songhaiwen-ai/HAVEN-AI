@@ -15,26 +15,25 @@ from .base import BasePlanner
 
 
 class SubtopicPlanner(BasePlanner):
-    """DeepSeek 驱动的智能子主题拆解器"""
+    """通用 LLM 驱动的智能子主题拆解器"""
 
     def __init__(self):
-        self.api_key = settings.openai_api_key
-        self.base_url = settings.openai_base_url
-        self.model = settings.llm_model
-        
-        self.client = openai.AsyncOpenAI(
-            api_key=self.api_key,
-            base_url=self.base_url
-        )
+        pass
 
     async def plan_subtopics(self, query: str, max_subtopics: int = 3) -> List[str]:
         """
-        利用 DeepSeek 智能拆解子主题
+        利用 LLM 智能拆解子主题
         """
         if not query or not query.strip():
             return []
 
-        logger.info(f"[Planner] 正在调用 DeepSeek LLM ({self.model}) 拆解课题子意图: '{query}'")
+        client = settings.get_async_llm_client()
+        if not client:
+            logger.warning("[Planner Warning] 未配置有效的 LLM API Key，回退默认全量课题。")
+            return [query]
+
+        model_name = settings.get_effective_model_name()
+        logger.info(f"[Planner] 正在调用 LLM ({model_name}) 拆解课题子意图: '{query}'")
 
         system_prompt = (
             "你是一名顶级深度研究专家与信息架构师。你的任务是将用户提出的研究课题拆解为多维度的子问题搜索关键词。\n"
@@ -47,8 +46,8 @@ class SubtopicPlanner(BasePlanner):
         user_prompt = f"请为以下研究课题拆解最多 {max_subtopics} 个具体的搜索引擎查询词：\n课题：{query}"
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
+            response = await client.chat.completions.create(
+                model=model_name,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
