@@ -418,14 +418,21 @@ async def chat_stream_sse(
                 client = get_async_client()
                 if client:
                     logger.info(f"[SSE Chat] 成功获取 AsyncOpenAI 实例，发起对话推流...")
+                    doc_summary_prompt = f"【当前右侧画布已生成的文档 ({current_ver_snapshot})】:\n{current_doc_snapshot[:600]}...\n\n" if current_doc_snapshot else "【当前右侧画布暂无文档】\n"
+                    
                     resp = await client.chat.completions.create(
                         model=settings.get_effective_model_name(),
                         messages=[
-                            {"role": "system", "content": """你是一个名为 HavenResearcher 的自主深度研究 Agent (Deep Research Agent)，1:1 对标 gpt-researcher 架构。
+                            {"role": "system", "content": f"""你是一个名为 HavenResearcher 的自主深度研究 Agent (Deep Research Agent)，1:1 对标 gpt-researcher 架构。
 你的核心定位是：基于全网实时检索、ArXiv 学术论文 MCP、GitHub 源码 MCP 及本地向量库，帮助用户进行自动化深度研究并生成/编辑高质量的研究报告文档 (Artifacts)。
 
-当用户打招呼或询问你的能力时，请精准展示你的【自主深度研究 (Deep Research)】与【Artifacts 研报生成/多轮修改】能力。语气专业、简洁、客观。无需回答无关的通用软件架构咨询。"""},
-                            {"role": "user", "content": f"已记忆的项目背景: {updated_bg or bg_snapshot or '暂无'}\n用户输入: {query}"}
+【对话答疑与追问响应原则】：
+1. 当用户打招呼或询问能力时：简明扼要展示你的【自主深度研究 (Deep Research)】与【Artifacts 研报生成/多轮修改】能力。
+2. 当用户是对之前回答、检索数据或时间点（如为什么是2024年而非2026年）进行质问、追问、吐槽或澄清时：请平易近人、诚恳严谨地向用户解释事实库边界、检索数据来源或技术逻辑。
+3. 请在对话框做出直接、精准的简短回答，不要强行吐出大段全量 Markdown 报告。
+
+{doc_summary_prompt}"""},
+                            {"role": "user", "content": f"已记忆的项目背景: {updated_bg or bg_snapshot or '暂无'}\n用户当前输入/追问: {query}"}
                         ],
                         stream=True
                     )
