@@ -15,11 +15,14 @@ from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, ForeignKey, Index
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from dotenv import load_dotenv
-from haven_research.config import settings
+from haven_research.config.settings import ENV_FILE_PATH, settings
 from haven_research.core import logger
 
 # 优先载入 .env 文件中的环境变量
-load_dotenv()
+if ENV_FILE_PATH.exists():
+    load_dotenv(str(ENV_FILE_PATH))
+else:
+    load_dotenv()
 
 Base = declarative_base()
 

@@ -6,9 +6,13 @@ haven_research/config/settings.py - 企业级生产配置中心管理模块
 """
 
 import os
+from pathlib import Path
 from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# 智能计算项目根目录 lab02_rag_agent 的 .env 绝对路径
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+ENV_FILE_PATH = PROJECT_ROOT / ".env"
 
 class Settings(BaseSettings):
     """全局应用配置类"""
@@ -47,7 +51,7 @@ class Settings(BaseSettings):
     port: int = 8000
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(ENV_FILE_PATH) if ENV_FILE_PATH.exists() else ".env",
         env_file_encoding="utf-8",
         extra="ignore"
     )

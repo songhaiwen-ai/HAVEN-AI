@@ -42,14 +42,20 @@ from haven_research.api.auth import (
     get_current_user_payload
 )
 
+from haven_research.config.settings import ENV_FILE_PATH, settings
 from dotenv import load_dotenv
-load_dotenv()
+if ENV_FILE_PATH.exists():
+    load_dotenv(str(ENV_FILE_PATH))
+else:
+    load_dotenv()
 
 intent_router = IntentRouter()
 document_editor = DocumentEditor()
 
 def get_async_client() -> Optional[AsyncOpenAI]:
     """动态安全获取 AsyncOpenAI 异步客户端"""
+    if ENV_FILE_PATH.exists():
+        load_dotenv(str(ENV_FILE_PATH))
     api_key = os.getenv("OPENAI_API_KEY") or getattr(settings, "openai_api_key", None)
     base_url = os.getenv("OPENAI_BASE_URL") or getattr(settings, "openai_base_url", "https://api.deepseek.com")
     if api_key:

@@ -483,28 +483,30 @@ export default {
       const url = `/api/v1/chat/stream?session_id=${sessionId}&query=${encodeURIComponent(query)}&report_source=${reportSource.value}`
       const eventSource = new EventSource(url)
 
+      const lastIdx = messages.value.length - 1
       let currentIntent = ""
 
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
+          const targetMsg = messages.value[lastIdx]
           
           if (data.type === "intent_meta") {
             currentIntent = data.intent
-            assistantMsg.intent = data.intent
+            if (targetMsg) targetMsg.intent = data.intent
             if (data.has_document && !artifact.value.content) {
               showArtifactCanvas.value = true
             }
           } else if (data.type === "persona") {
-            assistantMsg.agent_persona = data.content
+            if (targetMsg) targetMsg.agent_persona = data.content
           } else if (data.type === "chunk") {
-            assistantMsg.content += data.content
+            if (targetMsg) targetMsg.content += data.content
             if (currentIntent === "EDIT_DOC" || currentIntent === "GENERATE_DOC") {
-              artifact.value.content = assistantMsg.content
+              artifact.value.content = targetMsg ? targetMsg.content : ""
               showArtifactCanvas.value = true
             }
           } else if (data.type === "complete") {
-            assistantMsg.sources = data.sources || []
+            if (targetMsg) targetMsg.sources = data.sources || []
             if (data.version) {
               artifact.value.version = data.version
             }
