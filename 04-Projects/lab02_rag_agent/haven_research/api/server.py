@@ -42,15 +42,19 @@ from haven_research.api.auth import (
     get_current_user_payload
 )
 
+from dotenv import load_dotenv
+load_dotenv()
+
 intent_router = IntentRouter()
 document_editor = DocumentEditor()
 
-async_client = None
-if getattr(settings, "openai_api_key", None):
-    async_client = AsyncOpenAI(
-        api_key=settings.openai_api_key,
-        base_url=getattr(settings, "openai_base_url", "https://api.deepseek.com")
-    )
+def get_async_client() -> Optional[AsyncOpenAI]:
+    """动态安全获取 AsyncOpenAI 异步客户端"""
+    api_key = os.getenv("OPENAI_API_KEY") or getattr(settings, "openai_api_key", None)
+    base_url = os.getenv("OPENAI_BASE_URL") or getattr(settings, "openai_base_url", "https://api.deepseek.com")
+    if api_key:
+        return AsyncOpenAI(api_key=api_key, base_url=base_url)
+    return None
 
 app = FastAPI(
     title="HavenResearch Deep Research Web ChatGPT API",
@@ -405,9 +409,10 @@ async def chat_stream_sse(
             }
 
             try:
-                if async_client:
-                    logger.info(f"[SSE Chat] 发起 AsyncOpenAI 对话推流...")
-                    resp = await async_client.chat.completions.create(
+                client = get_async_client()
+                if client:
+                    logger.info(f"[SSE Chat] 成功获取 AsyncOpenAI 实例，发起对话推流...")
+                    resp = await client.chat.completions.create(
                         model=getattr(settings, "llm_model", "deepseek-chat"),
                         messages=[
                             {"role": "system", "content": "你是一个严谨平易近人的技术架构助手。根据用户的对话和背景补充，做出精准专业的简短回答。无需吐出大段排版文档。"},
