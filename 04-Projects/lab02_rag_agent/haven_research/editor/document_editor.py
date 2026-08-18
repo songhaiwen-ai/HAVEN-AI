@@ -71,7 +71,7 @@ class DocumentEditor:
         try:
             if self.client:
                 response = await self.client.chat.completions.create(
-                    model=getattr(settings, "llm_model", "deepseek-chat"),
+                    model=settings.get_effective_model_name(),
                     messages=messages,
                     temperature=0.3,
                     stream=True

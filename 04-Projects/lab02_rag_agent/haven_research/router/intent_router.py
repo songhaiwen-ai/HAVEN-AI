@@ -83,7 +83,7 @@ class IntentRouter:
                 ]
 
                 response = self.client.chat.completions.create(
-                    model=getattr(settings, "llm_model", "deepseek-chat"),
+                    model=settings.get_effective_model_name(),
                     messages=messages,
                     temperature=0.1,
                     response_format={"type": "json_object"} if "deepseek" in getattr(settings, "openai_base_url", "").lower() else None

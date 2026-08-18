@@ -56,9 +56,19 @@ class Settings(BaseSettings):
         """是否为生产环境"""
         return self.app_env.lower() == "production"
 
+    def get_effective_model_name(self) -> str:
+        """获取有效的 LLM 模型名称，包含 DashScope / Qwen 等防错校正"""
+        model = os.getenv("LLM_MODEL") or self.llm_model
+        base_url = os.getenv("OPENAI_BASE_URL") or self.openai_base_url
+        if "dashscope" in base_url.lower():
+            valid_qwen_models = ["qwen-max", "qwen-plus", "qwen-turbo", "qwen-long", "qwen2.5-72b-instruct", "qwen2.5-coder-32b-instruct"]
+            if model not in valid_qwen_models and not model.startswith("qwen2.5"):
+                return "qwen-plus"
+        return model
+
     def get_llm_client(self):
         """
-        获取配置好的标准 OpenAI / DeepSeek 客户端实例
+        获取配置好的标准 OpenAI / DeepSeek / 通义千问 客户端实例
         """
         if not self.openai_api_key:
             return None

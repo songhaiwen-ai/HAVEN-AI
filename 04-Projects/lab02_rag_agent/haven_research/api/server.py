@@ -413,7 +413,7 @@ async def chat_stream_sse(
                 if client:
                     logger.info(f"[SSE Chat] 成功获取 AsyncOpenAI 实例，发起对话推流...")
                     resp = await client.chat.completions.create(
-                        model=getattr(settings, "llm_model", "deepseek-chat"),
+                        model=settings.get_effective_model_name(),
                         messages=[
                             {"role": "system", "content": "你是一个严谨平易近人的技术架构助手。根据用户的对话和背景补充，做出精准专业的简短回答。无需吐出大段排版文档。"},
                             {"role": "user", "content": f"项目背景: {updated_bg or bg_snapshot}\n用户输入: {query}"}
