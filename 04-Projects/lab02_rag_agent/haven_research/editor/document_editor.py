@@ -38,7 +38,7 @@ class DocumentEditor:
         """
         yield {
             "type": "persona",
-            "content": f"[Artifact Editor] 正在依据修改指令与上下文背景，增量修订文档 ({current_version} ➔ 下一版本)..."
+            "content": f"✦ 正在分析修改指令，增量修订文档 ({current_version} ➔ {next_version})..."
         }
 
         # 计算下一个版本号 (如 v1.0 -> v1.1)

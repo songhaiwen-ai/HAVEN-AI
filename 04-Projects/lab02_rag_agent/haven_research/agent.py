@@ -79,29 +79,24 @@ class HavenResearcher:
         logger.info(f"=== 🚀 开启 HavenResearch 深度研究 (课题: '{self.query}', 模式: {self.report_source.value}) ===")
 
         # ----------------------------------------------------------------------
-        # 步骤 0: 动态 Agent 角色生成 (choose_agent)
+        # 步骤 0: 动态 Agent 角色生成
         # ----------------------------------------------------------------------
-        yield {"type": "step", "message": "🎭 正在调用 DeepSeek 分析课题并定制专家 Persona..."}
         self.agent_info = await choose_agent(self.query)
-        persona = self.agent_info.get("agent", "通用研究专家")
-        yield {"type": "persona", "persona": persona}
-        logger.info(f"[Agent Step 0] 动态专家 Persona: 【{persona}】")
 
         # ----------------------------------------------------------------------
-        # 步骤 1: 调用 DeepSeek 拆解子问题与搜索 Queries
+        # 步骤 1: 动态 Agent 角色生成与子主题规划
         # ----------------------------------------------------------------------
-        yield {"type": "step", "message": f"🗺️ 专家【{persona}】正在拆解子研究课题与构建 Multi-Queries..."}
+        yield {"type": "persona", "content": f"✦ [{self.agent_info.get('agent', '深度研究专家')}] 正在深度理解研究课题，规划核心分析维度..."}
         subtopics = await self.planner.plan_subtopics(self.query, max_subtopics=self.max_subtopics)
-        logger.info(f"[Agent Step 1/5] 子主题拆解完毕: {subtopics}")
+        logger.info(f"[Agent Plan] 子主题拆解完成: {subtopics}")
 
         # ----------------------------------------------------------------------
-        # 步骤 2: 调起 MCP 协议 (ArXiv / GitHub MCP) 与网络抓取降级
+        # 步骤 2: 多源抓取与实时向量入库
         # ----------------------------------------------------------------------
         all_sources: List[str] = []
         if self.report_source in [ReportSource.Web, ReportSource.Hybrid]:
             for idx, subtopic in enumerate(subtopics, 1):
-                # 💥 1. 调起 MCP 协议检索器 (ArXiv 学术论文 + GitHub 代码库 MCP)
-                yield {"type": "step", "message": f"🔗 (MCP 协议检索 {idx}/{len(subtopics)}) 正在调起 ArXiv & GitHub MCP 工具: '{subtopic}'"}
+                yield {"type": "persona", "content": f"✦ 正在检索第 {idx}/{len(subtopics)} 个维度 ('{subtopic}') 的前沿文献与权威数据..."}
                 try:
                     mcp_results = await self.mcp_retriever.search(subtopic, max_results=3)
                     for mcp_res in mcp_results:
@@ -114,13 +109,11 @@ class HavenResearcher:
                 except Exception as me:
                     logger.warning(f"[Agent MCP Warning] MCP 检索调用警告: {me}")
 
-                # 2. 全网通用 Web 搜索与抓取
-                yield {"type": "step", "message": f"🌐 (全网抓取 {idx}/{len(subtopics)}) 正在抓取实时网页: '{subtopic}'"}
                 search_results = await self.retriever.search(subtopic, max_results=settings.search_max_results)
                 scrape_tasks = [self.scraper.scrape_async(res.href, max_chars=1500) for res in search_results]
                 scraped_docs = await asyncio.gather(*scrape_tasks)
                 
-                # 语义切片与存入 Qdrant (带 Web 抓取失败自动降级为搜索引擎 Snippet 防护)
+                # 语义切片与存入 Qdrant
                 for res, doc in zip(search_results, scraped_docs):
                     text_content = doc.text
                     if not text_content or len(text_content) < 30:
@@ -136,12 +129,12 @@ class HavenResearcher:
                         if res.href not in all_sources:
                             all_sources.append(res.href)
         else:
-            yield {"type": "step", "message": "💾 纯本地知识库模式，跳过全网与 MCP 动态检索。"}
+            yield {"type": "persona", "content": "✦ 正在调起专用知识库检索精准事实..."}
 
         # ----------------------------------------------------------------------
-        # 步骤 3: 双路混合检索与 BGE Reranker 二次精排
+        # 步骤 3: 事实筛选与二次交叉精排
         # ----------------------------------------------------------------------
-        yield {"type": "step", "message": "🔍 正在触发【双路混合检索 + BGE Reranker 二次重排序】筛选高匹配证据..."}
+        yield {"type": "persona", "content": "✦ 正在交叉验证高价值数据源与核心事实..."}
         retrieved_contexts: List[TextChunkDTO] = []
         for subtopic in subtopics:
             hits = self.hybrid_retriever.hybrid_search(subtopic, top_k=3, coarse_k=10)
