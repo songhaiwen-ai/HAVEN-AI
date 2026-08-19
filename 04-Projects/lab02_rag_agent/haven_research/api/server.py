@@ -440,14 +440,18 @@ async def chat_stream_sse(
                 client = get_async_client()
                 if client:
                     logger.info(f"[SSE Chat] 成功获取 AsyncOpenAI 实例，发起对话推流...")
-                    doc_summary_prompt = f"【当前右侧画布已生成的文档 ({current_ver_snapshot})】:\n{current_doc_snapshot[:600]}...\n\n" if current_doc_snapshot else "【当前右侧画布暂无文档】\n"
+                    # 如果有 GitHub 实时抓取数据，隔离画布旧文档的干扰
+                    if gh_live_context:
+                        doc_summary_prompt = "【当前为 GitHub 仓库专项查询模式，已自动隔离旧画布文档】\n"
+                    else:
+                        doc_summary_prompt = f"【当前右侧画布已生成的文档 ({current_ver_snapshot})】:\n{current_doc_snapshot[:600]}...\n\n" if current_doc_snapshot else "【当前右侧画布暂无文档】\n"
                     
                     system_prompt = f"""你是一个名为 HavenResearcher 的自主深度研究 Agent (Deep Research Agent)，1:1 对标 gpt-researcher 架构。
 你的核心定位是：基于全网实时检索、ArXiv 学术论文 MCP、GitHub 源码 MCP 及本地向量库，帮助用户进行自动化深度研究并生成/编辑高质量的研究报告文档 (Artifacts)。
 
-【对话答疑与追问响应原则】：
-1. 当用户发送 GitHub 链接或查询 GitHub 仓库时：必须基于下方【GitHub MCP 协议真实实时数据源】给出 100% 真实客观的分析与总结，准确告知用户仓库的 Star 数、最新 Commit 提交时间及项目核心功能，严禁凭空记忆捏造 Commit 日期。
-2. 当用户是对之前回答、检索数据或时间点进行质问、追问、吐槽或澄清时：请平易近人、诚恳严谨地向用户解释事实库边界、检索数据来源或技术逻辑。
+【最高优先级约束与响应原则】：
+1. 当存在【GitHub MCP 协议真实实时数据源】时：你必须【100% 严格依据】数据源中由 GitHub 官方 API 实时返回的最新 Commit 提交时间 (pushed_at) 和 Readme 内容进行总结！绝对禁止凭空记忆编造，也绝对禁止参考任何无关的旧日期！
+2. 准确告知用户仓库的 Star 数、最新 Commit 提交时间（如 pushed_at 显示的时间）及核心功能亮点。
 3. 请在对话框做出直接、精准的简短回答，不要强行吐出大段全量 Markdown 报告。
 
 {doc_summary_prompt}
