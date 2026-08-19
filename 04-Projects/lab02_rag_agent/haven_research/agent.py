@@ -230,11 +230,30 @@ class HavenResearcher:
         import datetime
         current_date_str = datetime.datetime.now().strftime("%Y年%m月%d日")
 
-        context_str_list = []
-        for idx, ctx in enumerate(contexts, 1):
-            context_str_list.append(f"【精排证据 {idx}】得分: {ctx.score} | 来源: {ctx.url}\n内容: {ctx.content}")
+        # 自动化证据时效性分层 (Dual-Tier Knowledge Classification)
+        live_tier_chunks = []
+        static_rag_chunks = []
 
-        aggregated_context = "\n\n".join(context_str_list[:12]) if context_str_list else "无检索事实，依据大模型自身知识库生成。"
+        for ctx in contexts:
+            # 得分 >= 1.5 或来自实时 MCP / Web 抓取的数据归为实时动态层
+            if ctx.score >= 1.5 or "http" in ctx.url or "MCP" in ctx.content:
+                live_tier_chunks.append(ctx)
+            else:
+                static_rag_chunks.append(ctx)
+
+        live_str_list = [f"【实时动态证据 {i}】得分: {c.score} | 来源: {c.url}\n内容: {c.content}" for i, c in enumerate(live_tier_chunks, 1)]
+        static_str_list = [f"【静态规范证据 {i}】得分: {c.score} | 来源: {c.url}\n内容: {c.content}" for i, c in enumerate(static_rag_chunks, 1)]
+
+        live_context = "\n\n".join(live_str_list[:8]) if live_str_list else "暂无实时网络抓取数据。"
+        static_context = "\n\n".join(static_str_list[:6]) if static_str_list else "暂无静态知识库数据。"
+
+        aggregated_context = (
+            f"=== 🟢 第一级：实时动态事实层 (Live & High-Freshness Tier - 最最新数据) ===\n"
+            f"{live_context}\n\n"
+            f"=== 🔵 第二级：静态/私有知识与背景规范层 (Static RAG & Baseline Tier - 企业规范/历史背景) ===\n"
+            f"{static_context}"
+        )
+
         agent_role = self.agent_info.get("role", "你是一名资深技术研究员。")
         
         system_prompt = (
@@ -247,7 +266,10 @@ class HavenResearcher:
             "3. 文风客观严谨、富有深度，禁用泛泛而谈的废话。\n"
             f"4. 真实系统时间与时间戳最高优先级防伪 Guardrail：\n"
             f"   - 当前真实现实世界时间为：{current_date_str}。报告落款与分析必须以当前真实系统时间为基准，绝对禁止将参考资料本身的创作日期（例如2024年的旧博客）错误当做本报告的发布时间或当前数据的截止时间！\n"
-            f"   - 对于开源项目或 GitHub 仓库，其最新 Commit 提交时间必须完全严格以【GitHub MCP 官方 API 实时抓取事实】中返回的 pushed_at 字段为准（例如 pushed_at 显示为近期，严禁误写为 2024 年！），严禁参考二手文本里的旧日期！"
+            f"5. 双层知识分级与时效性最高原则 (Dual-Tier Knowledge Freshness Principle)：\n"
+            f"   - 🟢 第一级【实时动态事实层】包含由全网、MCP API 实时抓取的最最新数据，用于描述项目当前状态、最新 Commit 时间、最新版本与实时指标；\n"
+            f"   - 🔵 第二级【静态/私有知识与背景规范层】包含向量库中的企业规范、私有架构与历史文献，仅用于补充底层原理与规范约束；\n"
+            f"   - 当两层信息在时效性、最新状态或提交时间上存在差异时，必须 100% 优先以【第一级：实时动态事实层】的最新数据为准！"
         )
 
         user_prompt = (
