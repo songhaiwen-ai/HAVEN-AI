@@ -133,13 +133,6 @@
           </div>
 
           <div class="flex items-center space-x-3">
-            <!-- 数据源选择 -->
-            <el-select v-model="reportSource" size="small" class="!w-32">
-              <el-[#option] label="🌐 混合源" value="hybrid" />
-              <el-[#option] label="📚 知识库" value="local" />
-              <el-[#option] label="🔎 互联网" value="web" />
-            </el-select>
-
             <!-- 切换 Artifacts 右侧画板按键 -->
             <el-button v-if="artifact.content" 
                        @click="showArtifactCanvas = !showArtifactCanvas"
@@ -152,8 +145,8 @@
           </div>
         </header>
 
-        <!-- 对话消息列表 (pb-64 预留 256px 足够底距，1:1 解决消息被底部 Floating Dock 遮挡问题) -->
-        <el-main class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 max-w-4xl mx-auto w-full pb-64" id="messages-container">
+        <!-- 对话消息列表 (pb-64 预留 256px 足够底距，监听 @scroll 避让用户手动上滑) -->
+        <el-main @scroll="handleScroll" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 max-w-4xl mx-auto w-full pb-64" id="messages-container">
           
           <!-- 欢迎/空白页 -->
           <div v-if="messages.length === 0" class="h-full flex flex-col items-center justify-center text-center my-auto py-16 space-y-6">
@@ -542,7 +535,22 @@ export default {
       ElMessage.success("已复制文档 Markdown 到剪贴板！")
     }
 
+    const isUserScrolledUp = ref(false)
+
+    function handleScroll(e) {
+      const container = e.target
+      if (!container) return
+      const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight
+      // 如果距离底部超过 120px，认定用户在手动向上翻阅历史，暂停自动强行拉回底部
+      if (distanceFromBottom > 120) {
+        isUserScrolledUp.value = true
+      } else {
+        isUserScrolledUp.value = false
+      }
+    }
+
     function scrollToUserQuestion(idx) {
+      isUserScrolledUp.value = false // 发送新问题时强制重置上滑状态
       nextTick(() => {
         const container = document.getElementById("messages-container")
         const userEl = document.getElementById(`msg-${idx}`)
@@ -562,15 +570,18 @@ export default {
     }
 
     function autoScrollStream() {
-      nextTick(() => {
-        const container = document.getElementById("messages-container")
-        if (container) {
-          container.scrollTo({
-            top: container.scrollHeight,
-            behavior: 'smooth'
-          })
-        }
-      })
+      // 仅当用户未手动向上滚动查看历史记录时，随流式吐字实时平滑置底
+      if (!isUserScrolledUp.value) {
+        nextTick(() => {
+          const container = document.getElementById("messages-container")
+          if (container) {
+            container.scrollTo({
+              top: container.scrollHeight,
+              behavior: 'smooth'
+            })
+          }
+        })
+      }
     }
 
     return {
@@ -597,7 +608,8 @@ export default {
       getShortIntentLabel,
       sendQuery,
       renderMarkdown,
-      copyArtifactMarkdown
+      copyArtifactMarkdown,
+      handleScroll
     }
   }
 }
