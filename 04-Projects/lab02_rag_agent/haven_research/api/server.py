@@ -397,8 +397,7 @@ async def chat_stream_sse(
                             db_up.commit()
                             logger.info(f"[SSE DB] GENERATE_DOC 完成，新建 v1.0 文档画布落盘")
 
-                yield {"data": json.dumps(event, ensure_ascii=False)}
-
+        else:
             logger.info(f"[SSE Workflow] 触发 CHAT_ONLY (纯对话/背景记录模式)...")
             
             # 检测是否输入了 GitHub 仓库链接并调用 GitHub MCP 真实实时抓取

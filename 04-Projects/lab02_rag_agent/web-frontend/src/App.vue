@@ -152,8 +152,8 @@
           </div>
         </header>
 
-        <!-- 对话消息列表 -->
-        <el-main class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 max-w-4xl mx-auto w-full pb-36" id="messages-container">
+        <!-- 对话消息列表 (pb-48 确保留出足够底距，消息绝对不被底部 Floating Dock 遮挡) -->
+        <el-main class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 max-w-4xl mx-auto w-full pb-48" id="messages-container">
           
           <!-- 欢迎/空白页 -->
           <div v-if="messages.length === 0" class="h-full flex flex-col items-center justify-center text-center my-auto py-16 space-y-6">
@@ -544,7 +544,12 @@ export default {
     function scrollToBottom() {
       nextTick(() => {
         const container = document.getElementById("messages-container")
-        if (container) container.scrollTop = container.scrollHeight
+        if (container) {
+          container.scrollTo({
+            top: container.scrollHeight,
+            behavior: 'smooth'
+          })
+        }
       })
     }
 
