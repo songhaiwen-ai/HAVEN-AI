@@ -152,8 +152,8 @@
           </div>
         </header>
 
-        <!-- 对话消息列表 (pb-48 确保留出足够底距，消息绝对不被底部 Floating Dock 遮挡) -->
-        <el-main class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 max-w-4xl mx-auto w-full pb-48" id="messages-container">
+        <!-- 对话消息列表 (pb-64 预留 256px 足够底距，1:1 解决消息被底部 Floating Dock 遮挡问题) -->
+        <el-main class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 max-w-4xl mx-auto w-full pb-64" id="messages-container">
           
           <!-- 欢迎/空白页 -->
           <div v-if="messages.length === 0" class="h-full flex flex-col items-center justify-center text-center my-auto py-16 space-y-6">
@@ -179,7 +179,7 @@
           </div>
 
           <!-- 对话消息渲染 -->
-          <div v-for="(msg, idx) in messages" :key="idx" class="space-y-3">
+          <div v-for="(msg, idx) in messages" :key="idx" :id="'msg-' + idx" class="space-y-3">
             
             <!-- 用户消息 -->
             <div v-if="msg.role === 'user'" class="flex justify-end">
@@ -463,6 +463,7 @@ export default {
       const query = inputQuery.value.trim()
       if (!query || isGenerating.value) return
 
+      const userIdx = messages.value.length
       messages.value.push({ role: "user", content: query })
       inputQuery.value = ""
       isGenerating.value = true
@@ -475,7 +476,7 @@ export default {
         sources: []
       }
       messages.value.push(assistantMsg)
-      scrollToBottom()
+      scrollToUserQuestion(userIdx)
 
       const sessionId = currentSessionId.value || ("session_" + Date.now())
       currentSessionId.value = sessionId
@@ -518,7 +519,7 @@ export default {
             fetchSessions()
             eventSource.close()
           }
-          scrollToBottom()
+          autoScrollStream()
         } catch (e) {
           console.error("SSE JSON error:", e)
         }
@@ -541,7 +542,26 @@ export default {
       ElMessage.success("已复制文档 Markdown 到剪贴板！")
     }
 
-    function scrollToBottom() {
+    function scrollToUserQuestion(idx) {
+      nextTick(() => {
+        const container = document.getElementById("messages-container")
+        const userEl = document.getElementById(`msg-${idx}`)
+        if (container && userEl) {
+          const targetTop = Math.max(0, userEl.offsetTop - 30)
+          container.scrollTo({
+            top: targetTop,
+            behavior: 'smooth'
+          })
+        } else if (container) {
+          container.scrollTo({
+            top: container.scrollHeight,
+            behavior: 'smooth'
+          })
+        }
+      })
+    }
+
+    function autoScrollStream() {
       nextTick(() => {
         const container = document.getElementById("messages-container")
         if (container) {
