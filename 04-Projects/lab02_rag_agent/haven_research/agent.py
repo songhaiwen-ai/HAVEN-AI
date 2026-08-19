@@ -132,6 +132,31 @@ class HavenResearcher:
         # ----------------------------------------------------------------------
         yield {"type": "persona", "content": "✦ 正在交叉验证高价值数据源与核心事实..."}
         retrieved_contexts: List[TextChunkDTO] = []
+        
+        # 检查研究课题中是否包含 GitHub 仓库链接，优先直连 GitHub MCP 抓取 Live 元数据
+        from haven_research.mcp.github_mcp import GitHubMCPClient
+        parsed_gh = GitHubMCPClient.parse_github_url(self.query)
+        if parsed_gh:
+            owner, repo = parsed_gh["owner"], parsed_gh["repo"]
+            try:
+                gh_details = await GitHubMCPClient().get_repository_details_async(owner, repo)
+                if gh_details:
+                    gh_chunk_text = (
+                        f"【GitHub MCP 官方 API 实时抓取事实 (最高优先权威证据)】:\n"
+                        f"- 项目仓库: {gh_details['full_name']}\n"
+                        f"- Star 数: {gh_details['stars']}⭐ | Fork 数: {gh_details['forks']}\n"
+                        f"- 真实最新 Commit 提交时间 (pushed_at): {gh_details['pushed_at']}\n"
+                        f"- 真实最近更新时间 (updated_at): {gh_details['updated_at']}\n"
+                        f"- 项目描述: {gh_details['description']}\n"
+                        f"- 真实 README 内容节选:\n{gh_details['readme'][:2000]}"
+                    )
+                    retrieved_contexts.append(
+                        TextChunkDTO(url=gh_details['html_url'], content=gh_chunk_text, score=2.0)
+                    )
+                    logger.info(f"[Agent GitHub MCP] 成功注入 GitHub 实时数据源 (pushed_at: {gh_details['pushed_at']})")
+            except Exception as gh_err:
+                logger.warning(f"[Agent GitHub MCP Warning] GitHub 直连抓取异常: {gh_err}")
+
         for subtopic in subtopics:
             hits = self.hybrid_retriever.hybrid_search(subtopic, top_k=3, coarse_k=10)
             retrieved_contexts.extend(hits)
@@ -202,6 +227,9 @@ class HavenResearcher:
         调用 DeepSeek API 开启 stream=True 真流式 Token 推流，
         融合 Agent Skills 技能规范与指数退避重试 (Exponential Backoff Retry)。
         """
+        import datetime
+        current_date_str = datetime.datetime.now().strftime("%Y年%m月%d日")
+
         context_str_list = []
         for idx, ctx in enumerate(contexts, 1):
             context_str_list.append(f"【精排证据 {idx}】得分: {ctx.score} | 来源: {ctx.url}\n内容: {ctx.content}")
@@ -213,13 +241,13 @@ class HavenResearcher:
             f"{agent_role}\n"
             f"你需要根据提供的实时网络抓取事实与证据，撰写一份严谨、详实、逻辑严密的 {self.report_type.value} 深度研究报告。\n"
             f"{skills_prompt}\n"
-            "排版规范：\n"
+            "排版规范与真实时间线最高约束：\n"
             "1. 必须使用 Markdown 格式，包含一级标题、二级标题、加粗强调与无序列表。\n"
             "2. 结构包含：一、执行摘要；二、核心技术架构与原理；三、工业落地实践与应用；四、面临挑战与未来展望；五、参考来源链接。\n"
             "3. 文风客观严谨、富有深度，禁用泛泛而谈的废话。\n"
-            "4. 事实与时间防护线 (Temporal & Fact Integrity Guardrail)：\n"
-            "   - 如果研究课题涉及未来时间点（例如尚未到来的年份或月份），必须在报告开头明确声明数据的已知截止范围，严谨区分【已知事实/现状】与【前瞻性趋势推演】。\n"
-            "   - 严禁将搜索到的网页时间戳噪声（如新闻排播单、URL路径时间戳）误报为已发生的权威科技突破事件！"
+            f"4. 真实系统时间与时间戳最高优先级防伪 Guardrail：\n"
+            f"   - 当前真实现实世界时间为：{current_date_str}。报告落款与分析必须以当前真实系统时间为基准，绝对禁止将参考资料本身的创作日期（例如2024年的旧博客）错误当做本报告的发布时间或当前数据的截止时间！\n"
+            f"   - 对于开源项目或 GitHub 仓库，其最新 Commit 提交时间必须完全严格以【GitHub MCP 官方 API 实时抓取事实】中返回的 pushed_at 字段为准（例如 pushed_at 显示为近期，严禁误写为 2024 年！），严禁参考二手文本里的旧日期！"
         )
 
         user_prompt = (
