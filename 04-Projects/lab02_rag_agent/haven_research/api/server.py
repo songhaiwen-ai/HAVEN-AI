@@ -439,19 +439,23 @@ async def chat_stream_sse(
                 client = get_async_client()
                 if client:
                     logger.info(f"[SSE Chat] 成功获取 AsyncOpenAI 实例，发起对话推流...")
-                    # 如果有 GitHub 实时抓取数据，隔离画布旧文档的干扰
+                    # 动态生成 System Prompt：严格隔离 GitHub 专属规则与通用对话规则
                     if gh_live_context:
                         doc_summary_prompt = "【当前为 GitHub 仓库专项查询模式，已自动隔离旧画布文档】\n"
+                        rule_prompt = """【GitHub 专项查询原则】：
+1. 必须 100% 严格依据【GitHub MCP 协议真实实时数据源】中由 GitHub 官方 API 实时返回的最新 Commit 提交时间 (pushed_at)、Star 数与 Readme 进行客观总结。
+2. 严禁凭空记忆编造，严禁参考任何无关的历史旧日期。"""
                     else:
                         doc_summary_prompt = f"【当前右侧画布已生成的文档 ({current_ver_snapshot})】:\n{current_doc_snapshot[:600]}...\n\n" if current_doc_snapshot else "【当前右侧画布暂无文档】\n"
-                    
-                    system_prompt = f"""你是一个名为 HavenResearcher 的自主深度研究 Agent (Deep Research Agent)，1:1 对标 gpt-researcher 架构。
-你的核心定位是：基于全网实时检索、ArXiv 学术论文 MCP、GitHub 源码 MCP 及本地向量库，帮助用户进行自动化深度研究并生成/编辑高质量的研究报告文档 (Artifacts)。
+                        rule_prompt = """【通用对话与问答原则】：
+1. 保持语言自然、大方、专业且平易近人。
+2. 当用户打招呼 (如 "你好"、"在吗"、"嗨") 时：给出简洁、自然、大方的欢迎语，高屋建瓴地概括你的核心能力（如：技术架构分析、行业调研、文档生成与修改），绝对禁止暴露或提及任何系统底层实现细节（如严禁提到 'commit 提交时间'、'pushed_at'、'API 接口' 等内部工程名词）！
+3. 当用户询问技术概念或提问时：在对话框做出直接、精准、有深度的解答，不要强行吐出大段 Markdown 报告。"""
 
-【最高优先级约束与响应原则】：
-1. 当存在【GitHub MCP 协议真实实时数据源】时：你必须【100% 严格依据】数据源中由 GitHub 官方 API 实时返回的最新 Commit 提交时间 (pushed_at) 和 Readme 内容进行总结！绝对禁止凭空记忆编造，也绝对禁止参考任何无关的旧日期！
-2. 准确告知用户仓库的 Star 数、最新 Commit 提交时间（如 pushed_at 显示的时间）及核心功能亮点。
-3. 请在对话框做出直接、精准的简短回答，不要强行吐出大段全量 Markdown 报告。
+                    system_prompt = f"""你是一个专业、严谨、平易近人的智能 Agent 助手 HavenResearcher。
+你的核心定位是：协助用户进行技术架构分析、解答概念疑问、记录背景约束，以及按需撰写高质量的研究报告与架构方案文档 (Artifacts)。
+
+{rule_prompt}
 
 {doc_summary_prompt}
 {gh_live_context}"""
