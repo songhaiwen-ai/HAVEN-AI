@@ -89,7 +89,7 @@ class IntentRouter:
                     {"role": "user", "content": f"用户最新输入: {query_trim}"}
                 ]
 
-                response = self.client.chat.completions.create(
+                response = client.chat.completions.create(
                     model=settings.get_effective_model_name(),
                     messages=messages,
                     temperature=0.1,
@@ -131,14 +131,15 @@ class IntentRouter:
 
         # 规则启发式降级保底逻辑
         edit_keywords = ["修改", "改下", "润色", "增加节", "删除", "重写第三章", "加入表格", "优化文档"]
-        gen_keywords = ["生成", "撰写", "编写", "设计文档", "研究报告", "出个方案", "写一份", "完整文档"]
-        search_keywords = ["搜索", "检索", "查一下", "是什么", "指标", "对比"]
+        gen_keywords = ["生成", "撰写", "编写", "设计文档", "研究报告", "出个方案", "写一份", "完整文档", "深度研究报告"]
+        doc_search_keywords = ["深入分析并生成", "全面检索并输出文档"]
 
         if has_existing_doc and any(kw in query_trim for kw in edit_keywords):
             return UserIntent.EDIT_DOC, existing_background
         elif any(kw in query_trim for kw in gen_keywords):
             return UserIntent.GENERATE_DOC, existing_background
-        elif any(kw in query_trim for kw in search_keywords):
+        elif any(kw in query_trim for kw in doc_search_keywords):
             return UserIntent.RESEARCH_QNA, existing_background
         else:
+            # 概念问答 (如 "transformer架构是什么架构呢") 默认为 CHAT_ONLY 快速对话答疑
             return UserIntent.CHAT_ONLY, existing_background
