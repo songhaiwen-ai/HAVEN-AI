@@ -126,8 +126,8 @@
       <!-- 2.1 左/中: 对话视窗 -->
       <div class="flex-1 flex flex-col h-full bg-[#f8fafc] relative overflow-hidden">
         
-        <!-- 顶部功能栏 -->
-        <header class="h-14 border-b border-slate-200/70 bg-white/80 backdrop-blur-md px-6 flex items-center justify-between z-10">
+        <!-- 顶部功能栏 (Fixed height flex-shrink-0) -->
+        <header class="h-14 border-b border-slate-200/70 bg-white/80 backdrop-blur-md px-6 flex items-center justify-between z-10 flex-shrink-0">
           <div class="flex items-center space-x-3">
             <span class="font-bold text-slate-800 text-sm tracking-tight">HavenResearch</span>
           </div>
@@ -145,8 +145,8 @@
           </div>
         </header>
 
-        <!-- 对话消息列表 (pb-64 预留 256px 足够底距，监听 @scroll 避让用户手动上滑) -->
-        <el-main @scroll="handleScroll" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 max-w-4xl mx-auto w-full pb-64" id="messages-container">
+        <!-- 对话消息列表 (Flex 1 独立滚动区，与 Footer 为 Flex 兄弟节点，从物理上 100% 解决遮挡问题) -->
+        <el-main @scroll="handleScroll" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 max-w-4xl mx-auto w-full pb-8" id="messages-container">
           
           <!-- 欢迎/空白页 -->
           <div v-if="messages.length === 0" class="h-full flex flex-col items-center justify-center text-center my-auto py-16 space-y-6">
@@ -225,26 +225,28 @@
 
         </el-main>
 
-        <!-- 底部胶囊输入框 (Gemini 风格 Dock) -->
-        <footer class="absolute bottom-6 left-0 right-0 max-w-3xl mx-auto px-4 z-30">
-          <div class="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-full p-2.5 shadow-2xl shadow-blue-500/10 flex items-center space-x-3 hover:border-blue-300 transition-all">
-            <input 
-              v-model="inputQuery" 
-              @keydown.enter="sendQuery"
-              type="text" 
-              placeholder="输入背景、追问或修改指令 (如: '把第三章补充模型对比')..." 
-              class="flex-1 bg-transparent px-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
-            />
-            <el-button 
-              @click="sendQuery" 
-              :loading="isGenerating"
-              type="primary" 
-              circle 
-              class="!w-9 !h-9 !rounded-full shadow-xs">
-              <el-icon v-if="!isGenerating"><Promotion /></el-icon>
-            </el-button>
+        <!-- 底部胶囊输入框 (Flex-shrink-0 标准节点，绝不浮空覆盖消息视口) -->
+        <footer class="flex-shrink-0 bg-[#f8fafc]/95 border-t border-slate-200/60 p-4 z-30">
+          <div class="max-w-3xl mx-auto">
+            <div class="bg-white border border-slate-200/90 rounded-full p-2.5 shadow-lg shadow-blue-500/5 flex items-center space-x-3 hover:border-blue-300 transition-all">
+              <input 
+                v-model="inputQuery" 
+                @keydown.enter="sendQuery"
+                type="text" 
+                placeholder="输入背景、追问或修改指令 (如: '把第三章补充模型对比')..." 
+                class="flex-1 bg-transparent px-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
+              />
+              <el-button 
+                @click="sendQuery" 
+                :loading="isGenerating"
+                type="primary" 
+                circle 
+                class="!w-9 !h-9 !rounded-full shadow-xs">
+                <el-icon v-if="!isGenerating"><Promotion /></el-icon>
+              </el-button>
+            </div>
+            <div class="text-[10px] text-center text-slate-400 mt-2">HavenResearch Pro 支持多轮背景记忆与局部文档修订</div>
           </div>
-          <div class="text-[10px] text-center text-slate-400 mt-2">HavenResearch Pro 支持多轮背景记忆与局部文档修订</div>
         </footer>
 
       </div>
@@ -552,20 +554,22 @@ export default {
     function scrollToUserQuestion(idx) {
       isUserScrolledUp.value = false // 发送新问题时强制重置上滑状态
       nextTick(() => {
-        const container = document.getElementById("messages-container")
-        const userEl = document.getElementById(`msg-${idx}`)
-        if (container && userEl) {
-          const targetTop = Math.max(0, userEl.offsetTop - 30)
-          container.scrollTo({
-            top: targetTop,
-            behavior: 'smooth'
-          })
-        } else if (container) {
-          container.scrollTo({
-            top: container.scrollHeight,
-            behavior: 'smooth'
-          })
-        }
+        setTimeout(() => {
+          const container = document.getElementById("messages-container")
+          const userEl = document.getElementById(`msg-${idx}`)
+          if (container && userEl) {
+            const targetTop = Math.max(0, userEl.offsetTop - 16)
+            container.scrollTo({
+              top: targetTop,
+              behavior: 'smooth'
+            })
+          } else if (container) {
+            container.scrollTo({
+              top: container.scrollHeight,
+              behavior: 'smooth'
+            })
+          }
+        }, 60)
       })
     }
 
