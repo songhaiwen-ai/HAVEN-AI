@@ -172,7 +172,7 @@
           </div>
 
           <!-- 对话消息渲染 -->
-          <div v-for="(msg, idx) in messages" :key="idx" :id="'msg-' + idx" class="space-y-3">
+          <div v-for="(msg, idx) in messages" :key="msg.id || ('msg-' + idx)" :id="'msg-' + idx" class="space-y-3">
             
             <!-- 用户消息 -->
             <div v-if="msg.role === 'user'" class="flex justify-end">
@@ -397,16 +397,25 @@ export default {
     }
 
     async function loadSession(sessionId) {
+      if (!sessionId) return
       currentSessionId.value = sessionId
+      messages.value = [] // 1. 先清空，触发 Vue3 响应式节点重新挂载
+      
       try {
         const res = await chatApi.getMessages(sessionId)
-        messages.value = res.data.map(m => ({
-          role: m.role,
-          content: m.content,
-          sources: m.sources
-        }))
+        if (res.data && res.data.length > 0) {
+          messages.value = res.data.map(m => ({
+            id: m.id,
+            role: m.role,
+            content: m.content,
+            sources: m.sources || [],
+            agent_persona: m.role === 'assistant' ? 'Agent 已响应' : ''
+          }))
+        } else {
+          messages.value = []
+        }
 
-        // 加载当前会话的 Artifact 画布
+        // 2. 加载当前会话的 Artifact 画布
         try {
           const artRes = await chatApi.getArtifact(sessionId)
           if (artRes.data && artRes.data.current_document) {
@@ -422,8 +431,21 @@ export default {
           artifact.value.content = ""
         }
 
-        scrollToBottom()
+        // 3. 延时等待 DOM 重排渲染完成后平滑置底视区
+        isUserScrolledUp.value = false
+        nextTick(() => {
+          setTimeout(() => {
+            const container = document.getElementById("messages-container")
+            if (container) {
+              container.scrollTo({
+                top: container.scrollHeight,
+                behavior: 'smooth'
+              })
+            }
+          }, 80)
+        })
       } catch (e) {
+        console.error("加载历史会话失败:", e)
         messages.value = []
       }
     }
