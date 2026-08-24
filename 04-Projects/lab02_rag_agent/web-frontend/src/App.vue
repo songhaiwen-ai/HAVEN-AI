@@ -476,7 +476,8 @@ export default {
       const sessionId = currentSessionId.value || ("session_" + Date.now())
       currentSessionId.value = sessionId
 
-      const url = `/api/v1/chat/stream?session_id=${sessionId}&query=${encodeURIComponent(query)}&report_source=${reportSource.value}`
+      const token = localStorage.getItem('haven_token') || ''
+      const url = `/api/v1/chat/stream?session_id=${sessionId}&query=${encodeURIComponent(query)}&report_source=hybrid&token=${encodeURIComponent(token)}`
       const eventSource = new EventSource(url)
 
       const lastIdx = messages.value.length - 1
