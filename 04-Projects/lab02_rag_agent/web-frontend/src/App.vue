@@ -716,6 +716,7 @@ export default {
       quickStart,
       getShortIntentLabel,
       sendQuery,
+      stopGeneration,
       handleKeydown,
       handleCompositionStart,
       handleCompositionEnd,
