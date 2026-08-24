@@ -32,8 +32,7 @@ from haven_research.planner import SubtopicPlanner
 from haven_research.retrievers import DuckDuckGoRetriever, TavilyRetriever, MCPRetriever
 from haven_research.scrapers import WebScraper
 from haven_research.skills import SkillManager
-from haven_research.ingestion import SemanticTextSplitter
-from haven_research.ingestion.compressor import ContextCompressor
+from haven_research.ingestion import SemanticTextSplitter, ContextCompressor
 from haven_research.storage import VectorStoreFactory
 from haven_research.reranker import HybridRetriever
 from haven_research.verifier import CitationVerifierGate
