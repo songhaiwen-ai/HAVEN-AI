@@ -19,9 +19,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from haven_research.api import app
 
 if __name__ == "__main__":
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", 8000))
     print("=" * 80)
-    print(" 🚀 启动 HavenResearch FastAPI + SSE 打字机流式 API 服务")
-    print(" 🌐 浏览器访问 Web UI 交互界面: http://127.0.0.1:8000")
-    print(" 📄 Swagger 接口文档:           http://127.0.0.1:8000/docs")
+    print(f" 🚀 启动 HavenResearch FastAPI + SSE 打字机流式 API 服务 ({host}:{port})")
+    print(f" 📄 Swagger 接口文档:           http://{host}:{port}/docs")
     print("=" * 80 + "\n")
-    uvicorn.run("haven_research.api:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("haven_research.api:app", host=host, port=port, reload=False)
