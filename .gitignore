@@ -32,5 +32,7 @@ node_modules/
 **/node_modules/
 dist/
 **/dist/
+!04-Projects/lab02_rag_agent/web-frontend/dist/
+!04-Projects/lab02_rag_agent/web-frontend/dist/**
 *.db
 outputs/
