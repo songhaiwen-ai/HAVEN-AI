@@ -1,5 +1,5 @@
-# 基于官方轻量级 Python 3.11 基础镜像
-FROM python:3.11-slim
+# 基于官方轻量级 Python 3.11 基础镜像 (使用完整补全路径防止 Podman 交互弹窗)
+FROM docker.io/library/python:3.11-slim
 
 # 设置工作目录
 WORKDIR /app
