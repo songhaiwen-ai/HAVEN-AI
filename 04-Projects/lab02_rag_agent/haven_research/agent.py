@@ -33,6 +33,7 @@ from haven_research.retrievers import DuckDuckGoRetriever, TavilyRetriever, MCPR
 from haven_research.scrapers import WebScraper
 from haven_research.skills import SkillManager
 from haven_research.ingestion import SemanticTextSplitter
+from haven_research.ingestion.compressor import ContextCompressor
 from haven_research.storage import VectorStoreFactory
 from haven_research.reranker import HybridRetriever
 from haven_research.verifier import CitationVerifierGate
@@ -55,6 +56,7 @@ class HavenResearcher:
         self.mcp_retriever = MCPRetriever()  # 【MCP 协议标准检索器】
         self.skill_manager = SkillManager()  # 【Agent Skills 动态技能管理器】
         self.scraper = WebScraper(timeout=settings.scraper_timeout)
+        self.compressor = ContextCompressor()  # 【两阶段 Map-Reduce 事实压缩器】
         self.splitter = SemanticTextSplitter(
             chunk_size=settings.chunk_size,
             chunk_overlap=settings.chunk_overlap
