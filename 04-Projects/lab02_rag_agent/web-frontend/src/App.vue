@@ -225,27 +225,40 @@
 
         </el-main>
 
-        <!-- 底部胶囊输入框 (Flex-shrink-0 标准节点，绝不浮空覆盖消息视口) -->
+        <!-- 底部胶囊输入框 (Flex-shrink-0 标准节点，支持 Shift+Enter 换行与随时中断停止推流) -->
         <footer class="flex-shrink-0 bg-[#f8fafc]/95 border-t border-slate-200/60 p-4 z-30">
           <div class="max-w-3xl mx-auto">
-            <div class="bg-white border border-slate-200/90 rounded-full p-2.5 shadow-lg shadow-blue-500/5 flex items-center space-x-3 hover:border-blue-300 transition-all">
-              <input 
+            <div class="bg-white border border-slate-200/90 rounded-2xl p-2.5 shadow-lg shadow-blue-500/5 flex items-end space-x-3 hover:border-blue-300 transition-all">
+              <textarea 
                 v-model="inputQuery" 
-                @keydown.enter="sendQuery"
-                type="text" 
-                placeholder="输入背景、追问或修改指令 (如: '把第三章补充模型对比')..." 
-                class="flex-1 bg-transparent px-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
-              />
+                @keydown="handleKeydown"
+                rows="1"
+                placeholder="输入背景、追问或修改指令 (Shift + Enter 换行，Enter 发送)..." 
+                class="flex-1 bg-transparent px-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none resize-none max-h-32 min-h-[28px] py-1.5 leading-relaxed"
+              ></textarea>
+
+              <!-- 未在生成时：显示发送按钮 -->
               <el-button 
+                v-if="!isGenerating"
                 @click="sendQuery" 
-                :loading="isGenerating"
                 type="primary" 
                 circle 
-                class="!w-9 !h-9 !rounded-full shadow-xs">
-                <el-icon v-if="!isGenerating"><Promotion /></el-icon>
+                class="!w-9 !h-9 !rounded-full shadow-xs flex-shrink-0 mb-0.5">
+                <el-icon><Promotion /></el-icon>
+              </el-button>
+
+              <!-- 正在流式生成中：显示红色中断/停止按钮 -->
+              <el-button 
+                v-else
+                @click="stopGeneration" 
+                type="danger" 
+                circle 
+                title="点击停止输出"
+                class="!w-9 !h-9 !rounded-full shadow-xs flex-shrink-0 mb-0.5 !bg-rose-500 !border-rose-500 hover:!bg-rose-600 transition-transform active:scale-95">
+                <div class="w-3.5 h-3.5 bg-white rounded-xs"></div>
               </el-button>
             </div>
-            <div class="text-[10px] text-center text-slate-400 mt-2">HavenResearch Pro 支持多轮背景记忆与局部文档修订</div>
+            <div class="text-[10px] text-center text-slate-400 mt-2">HavenResearch Pro 支持多轮背景记忆、局部文档修订与随时停止生成</div>
           </div>
         </footer>
 
@@ -466,6 +479,34 @@ export default {
       sendQuery()
     }
 
+    const activeEventSource = ref(null)
+
+    function handleKeydown(e) {
+      // Shift + Enter 换行，Enter 单击直接发送 (忽略中文输入法组合按键)
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+        e.preventDefault()
+        sendQuery()
+      }
+    }
+
+    function stopGeneration() {
+      if (activeEventSource.value) {
+        activeEventSource.value.close()
+        activeEventSource.value = null
+      }
+      isGenerating.value = false
+
+      const lastMsg = messages.value[messages.value.length - 1]
+      if (lastMsg && lastMsg.role === 'assistant') {
+        if (!lastMsg.content) {
+          lastMsg.content = "*(响应已被用户中断)*"
+        } else if (!lastMsg.content.includes("已手动中断输出")) {
+          lastMsg.content += "\n\n*(已手动中断输出)*"
+        }
+      }
+      ElMessage.info("已停止推流输出")
+    }
+
     function getShortIntentLabel(intent) {
       const map = {
         "CHAT_ONLY": "💬 简短答疑",
@@ -501,6 +542,7 @@ export default {
       const token = localStorage.getItem('haven_token') || ''
       const url = `/api/v1/chat/stream?session_id=${sessionId}&query=${encodeURIComponent(query)}&report_source=hybrid&token=${encodeURIComponent(token)}`
       const eventSource = new EventSource(url)
+      activeEventSource.value = eventSource
 
       const lastIdx = messages.value.length - 1
       let currentIntent = ""
@@ -534,6 +576,7 @@ export default {
               showArtifactCanvas.value = true
             }
             isGenerating.value = false
+            activeEventSource.value = null
             fetchSessions()
             eventSource.close()
           }
@@ -545,6 +588,7 @@ export default {
 
       eventSource.onerror = () => {
         isGenerating.value = false
+        activeEventSource.value = null
         eventSource.close()
       }
     }
