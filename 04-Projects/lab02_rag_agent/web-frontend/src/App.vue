@@ -145,8 +145,8 @@
           </div>
         </header>
 
-        <!-- 对话消息列表 (使用 max-w-4xl mx-auto 优雅居中，两端边距均匀对称，无画布时消灭右侧大空白) -->
-        <el-main @scroll="handleScroll" class="flex-1 overflow-y-auto py-6 px-4 md:px-8 space-y-6 max-w-4xl mx-auto w-full pb-8" id="messages-container">
+        <!-- 对话消息列表 (全宽自流式排版 max-w-7xl px-4 md:px-10，彻底消灭左右两侧大面积空白) -->
+        <el-main @scroll="handleScroll" class="flex-1 overflow-y-auto py-6 px-4 md:px-10 space-y-6 w-full max-w-7xl mx-auto pb-8" id="messages-container">
           
           <!-- 欢迎/空白页 (调大字号与视觉卡片) -->
           <div v-if="messages.length === 0" class="h-full flex flex-col items-center justify-center text-center my-auto py-16 space-y-6">
@@ -174,20 +174,20 @@
           <!-- 对话消息渲染 (调大消息气泡与 Markdown 文本) -->
           <div v-for="(msg, idx) in messages" :key="msg.id || ('msg-' + idx)" :id="'msg-' + idx" class="space-y-3">
             
-            <!-- 用户消息 (text-sm md:text-base 调大字体) -->
+            <!-- 用户消息 (text-sm md:text-base 调大字体与最大宽度) -->
             <div v-if="msg.role === 'user'" class="flex justify-end">
-              <div class="bg-blue-600 text-white px-5 py-3.5 rounded-2xl rounded-tr-xs max-w-2xl text-sm md:text-base font-normal shadow-xs leading-relaxed">
+              <div class="bg-blue-600 text-white px-5 py-3.5 rounded-2xl rounded-tr-xs max-w-3xl md:max-w-4xl text-sm md:text-base font-normal shadow-xs leading-relaxed">
                 {{ msg.content }}
               </div>
             </div>
 
-            <!-- 助手消息 (text-sm md:text-base 调大字体) -->
+            <!-- 助手消息 (text-sm md:text-base 调大字体与全宽适应) -->
             <div v-else class="flex items-start space-x-3.5">
               <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center text-sm font-bold shadow-xs flex-shrink-0 mt-0.5">
                 ✦
               </div>
 
-              <div class="flex-1 bg-white border border-slate-200/80 rounded-2xl p-5 md:p-6 shadow-2xs text-sm md:text-base space-y-4 overflow-hidden">
+              <div class="flex-1 bg-white border border-slate-200/80 rounded-2xl p-5 md:p-7 shadow-2xs text-sm md:text-base space-y-4 overflow-hidden">
                 
                 <!-- 意图与 Agent 步骤标识 -->
                 <div v-if="msg.agent_persona || msg.intent" class="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-2.5">
@@ -225,9 +225,9 @@
 
         </el-main>
 
-        <!-- 底部胶囊输入框 (使用 max-w-4xl mx-auto 居中对齐) -->
-        <footer class="flex-shrink-0 bg-[#f8fafc]/95 border-t border-slate-200/60 py-4 px-4 md:px-8 z-30">
-          <div class="max-w-4xl mx-auto">
+        <!-- 底部胶囊输入框 (使用 max-w-7xl px-4 md:px-10 展开对齐) -->
+        <footer class="flex-shrink-0 bg-[#f8fafc]/95 border-t border-slate-200/60 py-4 px-4 md:px-10 z-30">
+          <div class="w-full max-w-7xl mx-auto">
             <div class="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-lg shadow-blue-500/5 flex items-end space-x-3 hover:border-blue-300 transition-all">
               <textarea 
                 v-model="inputQuery" 
