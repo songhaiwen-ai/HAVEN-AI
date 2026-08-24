@@ -352,6 +352,10 @@ export default {
           const res = await authApi.getMe()
           currentUser.value = res.data
           await fetchSessions()
+          // 刷新页面后自动恢复最近一条会话及其右侧 Artifacts 文档画布
+          if (historySessions.value.length > 0) {
+            await loadSession(historySessions.value[0].session_id)
+          }
         } catch (e) {
           logout()
         }
