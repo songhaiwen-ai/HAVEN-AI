@@ -87,13 +87,17 @@ class ChatService:
             }, ensure_ascii=False)
         }
 
-        # 2. 调用 IntentRouter LLM 判定真实意图与提取背景
-        intent, extracted_bg = await intent_router.route_intent_async(
+        # 2. 调用 IntentRouter LLM 判定真实意图、多轮主题提炼与提取背景
+        intent, extracted_bg, refined_topic = await intent_router.route_intent_async(
             user_query=query,
             current_doc=current_doc_snapshot,
             history_bg=bg_snapshot,
             chat_history=[{"role": h.role, "content": h.content} for h in (existing_history[-10:] if existing_history else [])]
         )
+
+        # 动态校准当前研究/生成的主题 Query (结合多轮对话上下文提炼的主题)
+        effective_query = refined_topic or query
+        req_dto.query = effective_query
 
         # 更新并持久化背景记忆
         updated_bg = bg_snapshot
