@@ -253,13 +253,32 @@ class ChatService:
         full_assistant_text = "".join(full_report_parts)
         if full_assistant_text.strip():
             db_up = next(db_manager.get_db())
-            ast_msg = ChatMessage(
-                session_id=session_id,
-                user_id=user_id,
-                role="assistant",
-                content=full_assistant_text,
-                sources_json=json.dumps(sources_data, ensure_ascii=False) if sources_data else None
-            )
+            
+            # 如果是 EDIT_DOC 或 GENERATE_DOC，左侧对话卡片记录简洁摘要，全量 Markdown 在 ChatSession.current_document 画布中持久化
+            if intent in [UserIntent.EDIT_DOC, UserIntent.GENERATE_DOC]:
+                sess_item = db_up.query(ChatSession).filter(ChatSession.session_id == session_id).first()
+                ver_str = sess_item.document_version if sess_item else "v1.1"
+                summary_text = (
+                    f"已为您在右侧画布完成文档修订 ({current_ver_snapshot} ➔ {ver_str})！\n\n"
+                    f"您可以随时在右侧画布查阅最新的 Markdown 全量文本，或继续提出修订指令。"
+                    if intent == UserIntent.EDIT_DOC
+                    else f"已为您在右侧画布成功生成全量技术研究文档 ({ver_str})！\n\n您可以在右侧画布查阅详情或提出修订意见。"
+                )
+                ast_msg = ChatMessage(
+                    session_id=session_id,
+                    user_id=user_id,
+                    role="assistant",
+                    content=summary_text,
+                    sources_json=json.dumps(sources_data, ensure_ascii=False) if sources_data else None
+                )
+            else:
+                ast_msg = ChatMessage(
+                    session_id=session_id,
+                    user_id=user_id,
+                    role="assistant",
+                    content=full_assistant_text,
+                    sources_json=json.dumps(sources_data, ensure_ascii=False) if sources_data else None
+                )
             db_up.add(ast_msg)
             db_up.commit()
             logger.info(f"=== [SSE Finish] 会话 {session_id} 处理完毕并成功持久化！ ===")

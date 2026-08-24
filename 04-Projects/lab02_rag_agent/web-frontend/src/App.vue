@@ -555,25 +555,43 @@ export default {
           if (data.type === "intent_meta") {
             currentIntent = data.intent
             if (targetMsg) targetMsg.intent = data.intent
-            if (data.has_document && !artifact.value.content) {
+            if (currentIntent === "EDIT_DOC" || currentIntent === "GENERATE_DOC") {
+              artifact.value.content = ""
+              showArtifactCanvas.value = true
+            } else if (data.has_document && !artifact.value.content) {
               showArtifactCanvas.value = true
             }
           } else if (data.type === "persona") {
             if (targetMsg) targetMsg.agent_persona = data.content
           } else if (data.type === "chunk") {
-            if (targetMsg) targetMsg.content += data.content
             if (currentIntent === "EDIT_DOC" || currentIntent === "GENERATE_DOC") {
-              artifact.value.content = targetMsg ? targetMsg.content : ""
+              // 实时在右侧 Artifact 画布流式追加 Markdown 全量文档
+              artifact.value.content += data.content
               showArtifactCanvas.value = true
+              if (targetMsg) {
+                targetMsg.content = "✦ 正在右侧画布实时增量生成与修订文档中..."
+              }
+            } else {
+              // 普通对话答疑：在左侧对话卡片正常展示打字机效果
+              if (targetMsg) targetMsg.content += data.content
             }
           } else if (data.type === "complete") {
-            if (targetMsg) targetMsg.sources = data.sources || []
-            if (data.version) {
-              artifact.value.version = data.version
-            }
-            if (data.document) {
-              artifact.value.content = data.document
+            if (currentIntent === "EDIT_DOC" || currentIntent === "GENERATE_DOC") {
+              if (data.document) {
+                artifact.value.content = data.document
+              }
+              if (data.version) {
+                artifact.value.version = data.version
+              }
               showArtifactCanvas.value = true
+              if (targetMsg) {
+                const verStr = artifact.value.version || 'v1.1'
+                targetMsg.content = currentIntent === 'EDIT_DOC'
+                  ? `已成功在右侧画布为您完成文档修订 (${verStr})！您可以在右侧画布查看全量最新内容或继续提出修订指令。`
+                  : `已成功在右侧画布为您生成全量技术研究文档 (${verStr})！您可以在右侧画布查阅或提出修订指令。`
+              }
+            } else {
+              if (targetMsg) targetMsg.sources = data.sources || []
             }
             isGenerating.value = false
             activeEventSource.value = null
