@@ -2,20 +2,38 @@ version: '3.8'
 
 services:
   # ============================================================================
-  # 1. FastAPI 后端 API 服务 (读取 .env 中配置的独立数据库地址 MYSQL_URL)
+  # 1. MySQL 8.0 数据库容器 (自动创建数据库 haven_agent 并挂载持久化数据卷)
+  # ============================================================================
+  mysql:
+    image: docker.io/library/mysql:8.0
+    container_name: haven_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: shw050219
+      MYSQL_DATABASE: haven_agent
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  # ============================================================================
+  # 2. FastAPI 后端 API 服务
   # ============================================================================
   backend:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: haven_backend
+    restart: always
     env_file:
       - .env
     ports:
       - "8000:8000"
+    depends_on:
+      - mysql
 
   # ============================================================================
-  # 2. Vue 3 + Nginx 前端 Web 控制台
+  # 3. Vue 3 + Nginx 前端 Web 控制台
   # ============================================================================
   frontend:
     build:
@@ -27,3 +45,6 @@ services:
       - "80:80"
     depends_on:
       - backend
+
+volumes:
+  mysql_data:
