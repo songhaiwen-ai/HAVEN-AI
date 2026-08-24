@@ -135,7 +135,7 @@
           <div class="flex items-center space-x-3">
             <!-- 切换 Artifacts 右侧画板按键 -->
             <el-button v-if="artifact.content" 
-                       @click="showArtifactCanvas = !showArtifactCanvas"
+                       @click="toggleArtifactCanvas"
                        size="default" 
                        :type="showArtifactCanvas ? 'primary' : 'default'" 
                        class="!rounded-xl !text-xs !font-semibold">
@@ -281,7 +281,7 @@
             <el-button @click="copyArtifactMarkdown" size="default" circle plain class="!border-slate-200">
               <el-icon :size="16"><DocumentCopy /></el-icon>
             </el-button>
-            <el-button @click="showArtifactCanvas = false" size="default" circle plain class="!border-slate-200">
+            <el-button @click="closeArtifactCanvas" size="default" circle plain class="!border-slate-200">
               <el-icon :size="16"><Close /></el-icon>
             </el-button>
           </div>
@@ -493,14 +493,12 @@ export default {
     }
 
     function handleCompositionEnd() {
-      // 延迟 10ms 重置标志，彻底隔离中文拼音选字确认 Enter 与真正发送指令的 Enter
       setTimeout(() => {
         isComposing.value = false
       }, 10)
     }
 
     function handleKeydown(e) {
-      // 仅当用户按下单 Enter 键，且绝非中文拼音选字状态时直接发送
       if (e.key === 'Enter' && !e.shiftKey) {
         if (!isComposing.value && !e.isComposing && e.keyCode !== 229) {
           e.preventDefault()
@@ -541,6 +539,7 @@ export default {
       const query = inputQuery.value.trim()
       if (!query || isGenerating.value) return
 
+      userManuallyClosedCanvas.value = false
       const userIdx = messages.value.length
       messages.value.push({ role: "user", content: query })
       inputQuery.value = ""
@@ -577,17 +576,22 @@ export default {
             if (targetMsg) targetMsg.intent = data.intent
             if (currentIntent === "EDIT_DOC" || currentIntent === "GENERATE_DOC") {
               artifact.value.content = ""
-              showArtifactCanvas.value = true
+              if (!userManuallyClosedCanvas.value) {
+                showArtifactCanvas.value = true
+              }
             } else if (data.has_document && !artifact.value.content) {
-              showArtifactCanvas.value = true
+              if (!userManuallyClosedCanvas.value) {
+                showArtifactCanvas.value = true
+              }
             }
           } else if (data.type === "persona") {
             if (targetMsg) targetMsg.agent_persona = data.content
           } else if (data.type === "chunk") {
             if (currentIntent === "EDIT_DOC" || currentIntent === "GENERATE_DOC") {
-              // 实时在右侧 Artifact 画布流式追加 Markdown 全量文档
               artifact.value.content += data.content
-              showArtifactCanvas.value = true
+              if (!userManuallyClosedCanvas.value) {
+                showArtifactCanvas.value = true
+              }
               if (targetMsg) {
                 targetMsg.content = "✦ 正在右侧画布实时增量生成与修订文档中..."
               }
@@ -719,6 +723,8 @@ export default {
       historySessions,
       showArtifactCanvas,
       artifact,
+      toggleArtifactCanvas,
+      closeArtifactCanvas,
       openAuthModal,
       handleUserMenuCommand,
       handleAuthSubmit,

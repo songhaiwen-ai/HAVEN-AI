@@ -207,6 +207,15 @@ class IntentRouter:
                     intent = UserIntent(intent_str)
                     if intent == UserIntent.EDIT_DOC and not has_existing_doc:
                         intent = UserIntent.GENERATE_DOC
+
+                    # 强力校准：若意图为 GENERATE_DOC，但提炼的主题依然是泛指指令（如“请帮我生成一篇技术文档”），强制从历史对话中萃取具体技术课题
+                    if intent == UserIntent.GENERATE_DOC and chat_history:
+                        generic_keywords = ["生成技术文档", "生成文档", "撰写技术文档", "输出文档", "整理成文档", "生成一份文档", "一篇技术文档"]
+                        if any(kw in refined_topic for kw in generic_keywords) or len(refined_topic) <= 12:
+                            extracted_topic = await self._extract_concrete_topic_from_history(async_client, chat_history)
+                            if extracted_topic:
+                                refined_topic = extracted_topic
+
                     logger.info(f"[LLM Intent Router] 🤖 LLM 语义判定结果: {intent.value} | 理由: '{data.get('reason')}' | 提炼主题: '{refined_topic}' | 提取背景: '{new_bg}'")
                     return intent, new_bg, refined_topic
                 except ValueError:
@@ -217,6 +226,31 @@ class IntentRouter:
 
         logger.info(f"[LLM Intent Router Fallback] 默认安全保底: CHAT_ONLY")
         return UserIntent.CHAT_ONLY, bg_ctx, target_query
+
+    async def _extract_concrete_topic_from_history(self, async_client, chat_history: List[Dict[str, str]]) -> Optional[str]:
+        """从上文历史对话中精准抽取核心讨论的具体技术名词与课题"""
+        try:
+            recent = chat_history[-6:]
+            history_text = "\n".join([f"{h.get('role', 'user')}: {str(h.get('content', ''))[:400]}" for h in recent])
+            prompt = (
+                f"请阅读以下多轮对话历史，总结出双方刚才正在深入探讨的具体核心技术/主题名称（如 LangGraph、MCP、RAG、Docker 等），"
+                f"并将其直接改写为一句完整的研究报告/技术白皮书标题。\n\n"
+                f"【对话历史】:\n{history_text}\n\n"
+                f"【要求】:\n"
+                f"1. 必须包含上文中讨论的核心技术名词。\n"
+                f"2. 只输出一行最终的技术文档标题，不要包含任何前缀、解释或标点引号。\n"
+                f"示例输出: LangGraph (开源 AI 状态图编排框架) 架构设计、核心原理、适用场景与应用实践技术研究报告"
+            )
+            resp = await async_client.chat.completions.create(
+                model=settings.get_effective_model_name(),
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1
+            )
+            topic = resp.choices[0].message.content.strip().strip('"').strip("'").strip("`")
+            return topic if len(topic) > 4 else None
+        except Exception as e:
+            logger.warning(f"[Topic Extraction Error] 从历史提取具体主题失败: {e}")
+            return None
 
     # 别名兼容
     route_intent_async = route_and_extract_async
