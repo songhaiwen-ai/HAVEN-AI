@@ -9,9 +9,6 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: haven_backend
-    restart: always
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     env_file:
       - .env
     ports:
