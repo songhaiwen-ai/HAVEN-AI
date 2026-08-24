@@ -339,14 +339,25 @@ export default {
     const historySessions = ref([])
     const token = ref(localStorage.getItem("haven_token") || "")
 
-    // Artifacts 画布状态
+    // Artifacts 画布状态与关闭拦截
     const showArtifactCanvas = ref(false)
+    const userManuallyClosedCanvas = ref(false)
     const artifact = ref({
       version: "v1.0",
       title: "文档画布",
       background_context: "",
       content: ""
     })
+
+    function toggleArtifactCanvas() {
+      showArtifactCanvas.value = !showArtifactCanvas.value
+      userManuallyClosedCanvas.value = !showArtifactCanvas.value
+    }
+
+    function closeArtifactCanvas() {
+      showArtifactCanvas.value = false
+      userManuallyClosedCanvas.value = true
+    }
 
     onMounted(async () => {
       if (token.value) {
