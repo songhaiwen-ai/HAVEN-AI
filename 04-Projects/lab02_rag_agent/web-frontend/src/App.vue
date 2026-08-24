@@ -129,7 +129,7 @@
         <!-- 顶部功能栏 (Fixed height flex-shrink-0, 调高至 h-16) -->
         <header class="h-16 border-b border-slate-200/70 bg-white/80 backdrop-blur-md px-6 flex items-center justify-between z-10 flex-shrink-0">
           <div class="flex items-center space-x-3">
-            <span class="font-bold text-slate-800 text-base tracking-tight">HavenResearch Pro</span>
+            <span class="font-bold text-slate-800 text-base tracking-tight">HavenResearch</span>
           </div>
 
           <div class="flex items-center space-x-3">
@@ -145,8 +145,8 @@
           </div>
         </header>
 
-        <!-- 对话消息列表 (Flex 1 独立滚动区，调大间距与字号) -->
-        <el-main @scroll="handleScroll" class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 max-w-4xl mx-auto w-full pb-8" id="messages-container">
+        <!-- 对话消息列表 (使用 max-w-4xl mx-auto 优雅居中，两端边距均匀对称，无画布时消灭右侧大空白) -->
+        <el-main @scroll="handleScroll" class="flex-1 overflow-y-auto py-6 px-4 md:px-8 space-y-6 max-w-4xl mx-auto w-full pb-8" id="messages-container">
           
           <!-- 欢迎/空白页 (调大字号与视觉卡片) -->
           <div v-if="messages.length === 0" class="h-full flex flex-col items-center justify-center text-center my-auto py-16 space-y-6">
@@ -225,8 +225,8 @@
 
         </el-main>
 
-        <!-- 底部胶囊输入框 (最大宽度 max-w-4xl，字体升级为 text-sm md:text-base 14px-16px) -->
-        <footer class="flex-shrink-0 bg-[#f8fafc]/95 border-t border-slate-200/60 p-4 md:p-5 z-30">
+        <!-- 底部胶囊输入框 (使用 max-w-4xl mx-auto 居中对齐) -->
+        <footer class="flex-shrink-0 bg-[#f8fafc]/95 border-t border-slate-200/60 py-4 px-4 md:px-8 z-30">
           <div class="max-w-4xl mx-auto">
             <div class="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-lg shadow-blue-500/5 flex items-end space-x-3 hover:border-blue-300 transition-all">
               <textarea 
@@ -260,7 +260,7 @@
                 <div class="w-4 h-4 bg-white rounded-xs"></div>
               </el-button>
             </div>
-            <div class="text-xs text-center text-slate-400 mt-2">HavenResearch Pro 支持多轮背景记忆、局部文档修订与随时停止生成</div>
+            <div class="text-xs text-center text-slate-400 mt-2">HavenResearch 支持多轮背景记忆、局部文档修订与随时停止生成</div>
           </div>
         </footer>
 
