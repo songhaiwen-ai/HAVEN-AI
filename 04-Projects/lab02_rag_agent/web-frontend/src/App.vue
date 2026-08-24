@@ -232,6 +232,8 @@
               <textarea 
                 v-model="inputQuery" 
                 @keydown="handleKeydown"
+                @compositionstart="handleCompositionStart"
+                @compositionend="handleCompositionEnd"
                 rows="1"
                 placeholder="输入背景、追问或修改指令 (Shift + Enter 换行，Enter 发送)..." 
                 class="flex-1 bg-transparent px-3 text-sm md:text-base text-slate-800 placeholder-slate-400 focus:outline-none resize-none max-h-36 min-h-[36px] py-1.5 leading-relaxed font-normal"
@@ -484,12 +486,26 @@ export default {
     }
 
     const activeEventSource = ref(null)
+    const isComposing = ref(false)
+
+    function handleCompositionStart() {
+      isComposing.value = true
+    }
+
+    function handleCompositionEnd() {
+      // 延迟 10ms 重置标志，彻底隔离中文拼音选字确认 Enter 与真正发送指令的 Enter
+      setTimeout(() => {
+        isComposing.value = false
+      }, 10)
+    }
 
     function handleKeydown(e) {
-      // Shift + Enter 换行，Enter 单击直接发送 (忽略中文输入法组合按键)
-      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
-        e.preventDefault()
-        sendQuery()
+      // 仅当用户按下单 Enter 键，且绝非中文拼音选字状态时直接发送
+      if (e.key === 'Enter' && !e.shiftKey) {
+        if (!isComposing.value && !e.isComposing && e.keyCode !== 229) {
+          e.preventDefault()
+          sendQuery()
+        }
       }
     }
 
@@ -700,6 +716,9 @@ export default {
       quickStart,
       getShortIntentLabel,
       sendQuery,
+      handleKeydown,
+      handleCompositionStart,
+      handleCompositionEnd,
       renderMarkdown,
       copyArtifactMarkdown,
       handleScroll
