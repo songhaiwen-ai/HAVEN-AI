@@ -633,7 +633,20 @@ export default {
 
     function renderMarkdown(content) {
       if (!content) return "<span class='typing-cursor text-blue-600 font-semibold'>正在推流分析中...</span>"
-      return marked.parse(content)
+      
+      let text = content.trim()
+      // 如果全量文档被错误包裹在最外层的代码块如 ```markdown ... ``` 中，剥离最外层代码块标签
+      if (text.startsWith("```")) {
+        const lines = text.split("\n")
+        if (lines.length > 2 && (lines[0].startsWith("```markdown") || lines[0].startsWith("```md") || lines[0].startsWith("```"))) {
+          if (lines[lines.length - 1].trim() === "```") {
+            text = lines.slice(1, -1).join("\n").trim()
+          } else {
+            text = lines.slice(1).join("\n").trim()
+          }
+        }
+      }
+      return marked.parse(text)
     }
 
     function copyArtifactMarkdown() {
@@ -803,12 +816,19 @@ export default {
 }
 
 .prose pre {
-  background-color: #0f172a;
-  color: #f8fafc;
+  background-color: #f8fafc;
+  color: #1e293b;
+  border: 1px solid #e2e8f0;
   padding: 1rem;
   border-radius: 0.75rem;
   font-size: 0.875rem;
   overflow-x: auto;
   margin: 1rem 0;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+}
+
+.prose pre code {
+  color: #0f172a;
+  background-color: transparent;
 }
 </style>

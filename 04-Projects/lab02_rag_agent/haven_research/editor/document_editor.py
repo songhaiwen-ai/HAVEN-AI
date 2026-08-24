@@ -89,7 +89,17 @@ class DocumentEditor:
                             "content": delta
                         }
 
-            full_revised_doc = "".join(full_chunks)
+            full_revised_doc = "".join(full_chunks).strip()
+            if full_revised_doc.startswith("```markdown"):
+                full_revised_doc = full_revised_doc[11:].strip()
+            elif full_revised_doc.startswith("```md"):
+                full_revised_doc = full_revised_doc[5:].strip()
+            elif full_revised_doc.startswith("```"):
+                full_revised_doc = full_revised_doc[3:].strip()
+                
+            if full_revised_doc.endswith("```"):
+                full_revised_doc = full_revised_doc[:-3].strip()
+
             yield {
                 "type": "complete",
                 "version": next_version,
