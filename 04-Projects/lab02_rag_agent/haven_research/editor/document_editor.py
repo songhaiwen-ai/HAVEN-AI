@@ -31,13 +31,13 @@ class DocumentEditor:
         流式对已有文档进行局部修订与全量平滑重构
         yield 事件格式与 HavenResearcher 保持统一 (type: persona / chunk / complete)
         """
+        # 计算下一个版本号 (如 v1.0 -> v1.1)
+        next_version = self._calculate_next_version(current_version)
+
         yield {
             "type": "persona",
             "content": f"✦ 正在分析修改指令，增量修订文档 ({current_version} ➔ {next_version})..."
         }
-
-        # 计算下一个版本号 (如 v1.0 -> v1.1)
-        next_version = self._calculate_next_version(current_version)
 
         system_prompt = f"""你是一位专业的资深技术文档编辑与架构师。
 你的任务是根据用户的修改指令，对已有的技术文档进行精准的局部修饰、补全或格式优化，并输出【完全修改更新后的完整 Markdown 文档】。
