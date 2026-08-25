@@ -30,8 +30,8 @@ class ContextCompressor:
 
         if not self.llm_client:
             # 规则降级截断
-            chunk.content = chunk.content[:350] + "..."
-            return chunk
+            new_content = chunk.content[:350] + "..."
+            return TextChunkDTO(content=new_content, metadata=chunk.metadata)
 
         prompt = f"""你是一名极其严谨的数据事实提炼专家。请针对研究主题【{topic}】，从以下原始网页/文档切片中提炼出最核心的 200 字以内的事实数据、技术细节与关键结论。
 
@@ -45,6 +45,7 @@ class ContextCompressor:
 
 【提炼出的高密度事实】:"""
 
+        new_content = chunk.content
         try:
             resp = await self.llm_client.chat.completions.create(
                 model=self.model,
@@ -54,12 +55,12 @@ class ContextCompressor:
             )
             compressed_text = resp.choices[0].message.content.strip()
             if compressed_text and len(compressed_text) > 30:
-                chunk.content = compressed_text
+                new_content = compressed_text
         except Exception as e:
             logger.warning(f"[ContextCompressor] 单条切片压缩跳过 (退避原文): {e}")
-            chunk.content = chunk.content[:400] + "..."
+            new_content = chunk.content[:400] + "..."
 
-        return chunk
+        return TextChunkDTO(content=new_content, metadata=chunk.metadata)
 
     async def compress_chunks_parallel(
         self,
@@ -73,6 +74,8 @@ class ContextCompressor:
         if not chunks:
             return []
 
+        # 🌟 修复点：在压缩任务执行前先统计原始文本总长度
+        total_orig = sum(len(c.content) for c in chunks)
         logger.info(f"[ContextCompressor] 开启 Map 阶段：针对主题 '{topic}' 并发压缩 {len(chunks)} 条原始切片...")
         
         semaphore = asyncio.Semaphore(max_concurrent)
@@ -84,7 +87,6 @@ class ContextCompressor:
         tasks = [worker(c) for c in chunks]
         compressed_chunks = await asyncio.gather(*tasks)
         
-        total_orig = sum(len(c.content) for c in chunks)
         total_comp = sum(len(c.content) for c in compressed_chunks)
         saved_rate = round((1 - total_comp / max(1, total_orig)) * 100, 1)
         
